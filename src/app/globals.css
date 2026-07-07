@@ -1,0 +1,145 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ink: #07090f;
+  --glass: rgba(255, 255, 255, 0.055);
+  --glass-strong: rgba(255, 255, 255, 0.09);
+  --line: rgba(255, 255, 255, 0.12);
+  --glow: #22d3ee;
+  --viol: #8b7cf8;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--ink);
+  color: #e8ecf4;
+  min-height: 100dvh;
+  overscroll-behavior-y: none;
+}
+
+/* Gradientes discretos de fundo */
+.bg-orbs {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(42rem 28rem at 85% -5%, rgba(139, 124, 248, 0.16), transparent 60%),
+    radial-gradient(36rem 26rem at -10% 30%, rgba(34, 211, 238, 0.1), transparent 60%),
+    radial-gradient(40rem 30rem at 60% 110%, rgba(139, 124, 248, 0.1), transparent 60%);
+}
+
+/* Cartão de vidro */
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.glass-strong {
+  background: var(--glass-strong);
+}
+
+/* Pílula de semana (assinatura visual do app) */
+.week-pill {
+  min-width: 3.4rem;
+  border-radius: 0.9rem;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  text-align: center;
+  padding: 0.35rem 0.4rem;
+}
+.week-pill.current {
+  border-color: rgba(34, 211, 238, 0.7);
+  background: rgba(34, 211, 238, 0.1);
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.25);
+}
+.week-pill.inherited {
+  border-style: dashed;
+  opacity: 0.65;
+}
+
+/* Botões */
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition active:scale-[0.97];
+  min-height: 48px;
+}
+.btn-primary {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.9), rgba(139, 124, 248, 0.9));
+  color: #06121a;
+}
+.btn-ghost {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.05);
+  color: #e8ecf4;
+}
+.btn-danger {
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  background: rgba(248, 113, 113, 0.12);
+  color: #fca5a5;
+}
+
+/* Campos */
+.field {
+  @apply w-full rounded-2xl px-4 py-3 text-base;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  color: #f2f5fb;
+  min-height: 48px;
+}
+.field:focus {
+  outline: none;
+  border-color: rgba(34, 211, 238, 0.65);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.15);
+}
+.field-mini {
+  @apply rounded-xl px-2 py-2 text-center text-base;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--line);
+  color: #f2f5fb;
+  width: 100%;
+  min-height: 44px;
+}
+.field-mini:focus {
+  outline: none;
+  border-color: rgba(34, 211, 238, 0.65);
+}
+
+input[type="date"] {
+  color-scheme: dark;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.fade-in {
+  animation: fadeIn 0.35s ease both;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in {
+    animation: none;
+  }
+  .btn {
+    transition: none;
+  }
+}

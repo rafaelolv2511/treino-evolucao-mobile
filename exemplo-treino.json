@@ -1,0 +1,106 @@
+{
+  "profileName": "Rafael",
+  "planName": "Treino Hipertrofia Julho",
+  "startDate": "2026-07-03",
+  "sessions": [
+    {
+      "sessionKey": "A",
+      "sessionName": "Treino A",
+      "focus": "Peito e tríceps",
+      "exercises": [
+        {
+          "exerciseId": "supino_inclinado_haltere",
+          "name": "Supino inclinado com halteres",
+          "description": "Executar com controle e amplitude segura.",
+          "primaryMuscleGroup": "Peito",
+          "secondaryMuscleGroups": ["Ombro", "Tríceps"],
+          "sets": 3,
+          "reps": "8-10",
+          "targetRIR": 2,
+          "suggestedRestSeconds": 90,
+          "initialLoadKg": null,
+          "notes": ""
+        },
+        {
+          "exerciseId": "crucifixo_maquina",
+          "name": "Crucifixo na máquina",
+          "description": "Foco em alongar o peitoral na fase excêntrica.",
+          "primaryMuscleGroup": "Peito",
+          "secondaryMuscleGroups": [],
+          "sets": 3,
+          "reps": "10-12",
+          "targetRIR": 2,
+          "suggestedRestSeconds": 60,
+          "initialLoadKg": null,
+          "notes": ""
+        },
+        {
+          "exerciseId": "triceps_corda",
+          "name": "Tríceps na corda",
+          "description": "Cotovelos fixos ao lado do corpo.",
+          "primaryMuscleGroup": "Tríceps",
+          "secondaryMuscleGroups": [],
+          "sets": 3,
+          "reps": "10-12",
+          "targetRIR": 1,
+          "suggestedRestSeconds": 60,
+          "initialLoadKg": null,
+          "notes": ""
+        }
+      ],
+      "mobility": [
+        {
+          "mobilityId": "mobilidade_ombro_aquecimento",
+          "name": "Mobilidade de ombro",
+          "description": "Movimento controlado antes do treino.",
+          "durationSeconds": 60,
+          "reps": null,
+          "notes": ""
+        }
+      ]
+    },
+    {
+      "sessionKey": "B",
+      "sessionName": "Treino B",
+      "focus": "Costas e bíceps",
+      "exercises": [
+        {
+          "exerciseId": "puxada_frontal",
+          "name": "Puxada frontal",
+          "description": "Puxar até a altura do queixo, sem balanço.",
+          "primaryMuscleGroup": "Costas",
+          "secondaryMuscleGroups": ["Bíceps"],
+          "sets": 4,
+          "reps": "8-10",
+          "targetRIR": 2,
+          "suggestedRestSeconds": 90,
+          "initialLoadKg": null,
+          "notes": ""
+        },
+        {
+          "exerciseId": "rosca_direta_barra",
+          "name": "Rosca direta com barra",
+          "description": "Sem roubar com o tronco.",
+          "primaryMuscleGroup": "Bíceps",
+          "secondaryMuscleGroups": [],
+          "sets": 3,
+          "reps": "8-12",
+          "targetRIR": 1,
+          "suggestedRestSeconds": 60,
+          "initialLoadKg": null,
+          "notes": ""
+        }
+      ],
+      "mobility": [
+        {
+          "mobilityId": "mobilidade_toracica",
+          "name": "Mobilidade torácica",
+          "description": "Rotações de tronco ajoelhado.",
+          "durationSeconds": 60,
+          "reps": null,
+          "notes": ""
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+import type { Metadata, Viewport } from "next";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "Treino Evolução",
+  description: "Registre cargas, acompanhe sua evolução e exporte relatórios inteligentes.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: "#07090F",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="pt-BR">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="font-body">
+        <div className="bg-orbs" aria-hidden="true" />
+        <main className="relative z-10 mx-auto min-h-dvh w-full max-w-md px-4 pb-28 pt-6">{children}</main>
+      </body>
+    </html>
+  );
+}
