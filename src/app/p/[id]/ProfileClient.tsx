@@ -20,6 +20,7 @@ export default function ProfileClient({ profileId }: { profileId: string }) {
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [plan, setPlan] = useState<TrainingPlanRow | null>(null);
   const [history, setHistory] = useState<HistoryBundle>({ sessions: [], logs: [], sets: [] });
+  const [fullHistory, setFullHistory] = useState<HistoryBundle>({ sessions: [], logs: [], sets: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,10 +29,18 @@ export default function ProfileClient({ profileId }: { profileId: string }) {
       const [p, pl] = await Promise.all([getProfile(profileId), getActivePlan(profileId)]);
       setProfile(p);
       setPlan(pl);
+
+      const allSessions = await listWorkoutSessions(profileId);
+      const allLogs = await listExerciseLogsForSessions(allSessions.map((s) => s.id));
+      const allSets = await listSetLogsForExerciseLogs(allLogs.map((l) => l.id));
+      setFullHistory({ sessions: allSessions, logs: allLogs, sets: allSets });
+
       if (pl) {
-        const sessions = await listWorkoutSessions(profileId, pl.id);
-        const logs = await listExerciseLogsForSessions(sessions.map((s) => s.id));
-        const sets = await listSetLogsForExerciseLogs(logs.map((l) => l.id));
+        const sessions = allSessions.filter((s) => s.training_plan_id === pl.id);
+        const sessionIds = new Set(sessions.map((s) => s.id));
+        const logs = allLogs.filter((l) => sessionIds.has(l.workout_session_id));
+        const logIds = new Set(logs.map((l) => l.id));
+        const sets = allSets.filter((s) => logIds.has(s.exercise_log_id));
         setHistory({ sessions, logs, sets });
       } else {
         setHistory({ sessions: [], logs: [], sets: [] });
@@ -78,7 +87,7 @@ export default function ProfileClient({ profileId }: { profileId: string }) {
       {tab === "treinos" ? (
         <TreinosView profile={profile} plan={plan} history={history} onChanged={refresh} />
       ) : (
-        <EvolucaoView profile={profile} plan={plan} history={history} onChanged={refresh} />
+        <EvolucaoView profile={profile} plan={plan} history={history} fullHistory={fullHistory} onChanged={refresh} />
       )}
 
       <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-md px-4 pb-4">
