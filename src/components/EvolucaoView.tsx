@@ -12,7 +12,7 @@ import {
   Bar,
   BarChart,
 } from "recharts";
-import { bestLoadOfLog, evolutionForPlan, fmtKg, fmtPct, HistoryBundle } from "@/lib/calc";
+import { bestLoadOfLog, evolutionForPlan, fmtKg, fmtPct, HistoryBundle, stagnantExercises } from "@/lib/calc";
 import {
   clearProfileTrainingData,
   deleteBodyMetric,
@@ -45,11 +45,13 @@ export default function EvolucaoView({
   profile,
   plan,
   history,
+  fullHistory,
   onChanged,
 }: {
   profile: ProfileRow;
   plan: TrainingPlanRow | null;
   history: HistoryBundle;
+  fullHistory: HistoryBundle;
   onChanged: () => void;
 }) {
   const [metrics, setMetrics] = useState<BodyMetricRow[] | null>(null);
@@ -74,26 +76,56 @@ export default function EvolucaoView({
   }, [profile.id]);
 
   const evo = useMemo(
-    () => (plan ? evolutionForPlan(plan.source_json, history) : null),
-    [plan, history]
+    () => (plan ? evolutionForPlan(plan.source_json, fullHistory) : null),
+    [plan, fullHistory]
   );
 
-  const allExercises = useMemo(
-    () => (plan ? plan.source_json.sessions.flatMap((s) => s.exercises) : []),
-    [plan]
+  // Aviso gentil de estagnação: exercícios do plano atual parados há 3+ semanas.
+  const stalled = useMemo(
+    () => (plan ? stagnantExercises(plan.source_json, fullHistory, 3) : []),
+    [plan, fullHistory]
   );
+
+  // Lista de exercícios dos gráficos: união do plano atual + tudo que já foi
+  // registrado em qualquer treino (para o histórico persistir após trocar de plano).
+  const allExercises = useMemo(() => {
+    const map = new Map<string, { exerciseId: string; name: string; primaryMuscleGroup: string }>();
+    if (plan) {
+      for (const s of plan.source_json.sessions) {
+        for (const e of s.exercises) {
+          map.set(e.exerciseId, {
+            exerciseId: e.exerciseId,
+            name: e.name,
+            primaryMuscleGroup: e.primaryMuscleGroup,
+          });
+        }
+      }
+    }
+    // exercícios de planos antigos que não estão no atual
+    for (const l of fullHistory.logs) {
+      if (!map.has(l.exercise_id)) {
+        map.set(l.exercise_id, {
+          exerciseId: l.exercise_id,
+          name: l.exercise_name_snapshot,
+          primaryMuscleGroup: l.primary_muscle_group_snapshot,
+        });
+      }
+    }
+    return [...map.values()];
+  }, [plan, fullHistory]);
 
   // Série por período (mês/ano): melhor carga do exercício em cada período
   const periodOf = (date: string) => (granularity === "mes" ? date.slice(0, 7) : date.slice(0, 4));
 
   const loadByPeriod = useMemo(() => {
-    // exerciseId -> period -> melhor carga
+    // exerciseId -> period -> melhor carga. Usa o histórico COMPLETO para que os
+    // gráficos continuem mostrando dados de treinos anteriores após uma troca.
     const map = new Map<string, Map<string, number>>();
-    const sessionById = new Map(history.sessions.map((s) => [s.id, s]));
-    for (const log of history.logs) {
+    const sessionById = new Map(fullHistory.sessions.map((s) => [s.id, s]));
+    for (const log of fullHistory.logs) {
       const session = sessionById.get(log.workout_session_id);
       if (!session) continue;
-      const { load } = bestLoadOfLog(log.id, history.sets);
+      const { load } = bestLoadOfLog(log.id, fullHistory.sets);
       if (load === null) continue;
       const p = periodOf(session.workout_date);
       const inner = map.get(log.exercise_id) ?? new Map();
@@ -101,7 +133,7 @@ export default function EvolucaoView({
       map.set(log.exercise_id, inner);
     }
     return map;
-  }, [history, granularity]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fullHistory, granularity]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const periods = useMemo(() => {
     const set = new Set<string>();
@@ -264,6 +296,27 @@ export default function EvolucaoView({
           </div>
         )}
       </Section>
+
+      {/* Aviso de estagnação */}
+      {stalled.length > 0 && (
+        <div className="glass fade-in border-amber-400/25 p-4">
+          <div className="mb-2 flex items-center gap-2 text-amber-300">
+            <Icon name="alert" size={17} />
+            <h3 className="font-display text-sm font-bold">Atenção à estagnação</h3>
+          </div>
+          <div className="space-y-1.5">
+            {stalled.slice(0, 4).map((s) => (
+              <p key={s.exerciseId} className="text-xs text-white/70">
+                <strong className="text-white/90">{s.name}</strong> parado em {fmtKg(s.currentLoadKg)} há{" "}
+                {s.weeksStalled} semanas — considere variar o exercício ou ajustar séries/reps.
+              </p>
+            ))}
+          </div>
+          {stalled.length > 4 && (
+            <p className="mt-2 text-[11px] text-white/45">e mais {stalled.length - 4} exercício(s).</p>
+          )}
+        </div>
+      )}
 
       {/* 2. Gráficos de evolução do treino */}
       <Section

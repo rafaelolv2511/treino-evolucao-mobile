@@ -69,6 +69,20 @@ const PATHS: Record<string, React.ReactNode> = {
     </>
   ),
   move: <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20" />,
+  medal: (
+    <>
+      <circle cx="12" cy="15" r="6" />
+      <path d="M12 12v0M9 15l1.5 1.5M15 15l-1.5 1.5" />
+      <path d="M8.5 9L6 3h4l2 3M15.5 9L18 3h-4l-2 3" />
+    </>
+  ),
+  flame: <path d="M12 2c1 3 4 4 4 8a4 4 0 01-8 0c0-1 .5-2 1-2.5C9 9 8 10 8 12a4 4 0 108 0c0-4-3-7-4-10z" />,
+  alert: (
+    <>
+      <path d="M12 9v4M12 17h.01" />
+      <path d="M10.3 3.9l-8 14A2 2 0 004 21h16a2 2 0 001.7-3l-8-14a2 2 0 00-3.4 0z" />
+    </>
+  ),
 };
 
 export default function Icon({

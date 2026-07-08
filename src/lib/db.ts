@@ -209,6 +209,36 @@ export async function listSessionsAllProfiles(): Promise<Pick<WorkoutSessionRow,
   return data ?? [];
 }
 
+/**
+ * Histórico completo de TODOS os perfis, para o ranking por evolução.
+ * Retorna sessões, logs e séries; a agregação por perfil é feita na página.
+ */
+export async function listFullHistoryAllProfiles(): Promise<{
+  sessions: WorkoutSessionRow[];
+  logs: ExerciseLogRow[];
+  sets: SetLogRow[];
+}> {
+  const { data: sessions, error: e1 } = await supabase.from("workout_sessions").select("*");
+  if (e1) throw e1;
+  const sessionIds = (sessions ?? []).map((s) => s.id);
+  if (sessionIds.length === 0) return { sessions: sessions ?? [], logs: [], sets: [] };
+
+  const { data: logs, error: e2 } = await supabase
+    .from("exercise_logs")
+    .select("*")
+    .in("workout_session_id", sessionIds);
+  if (e2) throw e2;
+  const logIds = (logs ?? []).map((l) => l.id);
+
+  let sets: SetLogRow[] = [];
+  if (logIds.length > 0) {
+    const { data: setData, error: e3 } = await supabase.from("set_logs").select("*").in("exercise_log_id", logIds);
+    if (e3) throw e3;
+    sets = setData ?? [];
+  }
+  return { sessions: sessions ?? [], logs: logs ?? [], sets };
+}
+
 // ── Logs de exercício e séries ──────────────────────────────────────────────
 export async function listExerciseLogsForSessions(sessionIds: string[]): Promise<ExerciseLogRow[]> {
   if (sessionIds.length === 0) return [];

@@ -43,3 +43,28 @@ Estado real da implementação em 03/07/2026.
 Cole este contexto:
 
 > Tenho o app "treino-evolucao-mobile" (Next.js 14 + TypeScript + Tailwind + Supabase). Supabase: projeto "musculacao projeto" (ref yjnccmvlskhvmjbceztt), schema já aplicado (migration treino_evolucao_schema_inicial) com as tabelas profiles, training_plans, body_metrics, workout_sessions, exercise_logs, set_logs, profile_notes, exported_reports — todas com RLS aberto para anon (app sem login). Estrutura: páginas em `src/app` (/ = perfis, /p/[id] = área do perfil com abas Treinos/Evolução), componentes em `src/components` (SessionView, TreinosView, EvolucaoView, ImportPlan, PlanEditor, RestTimer, ui), lógica em `src/lib` (types, validatePlan, db, calc, report). Regras principais: semana S1 = primeira data do plano ativo em blocos de 7 dias; carga não preenchida é herdada só para análise (flag inherited em calc.ts); sugestão por RIR em calc.ts; evolução = ((recente − inicial)/inicial)×100 por exerciseId. Preciso de: [descreva a mudança].
+
+---
+
+## Atualização — novas funcionalidades (rodada mais recente)
+
+Implementadas e testadas (build ok):
+
+1. **Recorde pessoal (PR):** ao registrar num exercício uma carga maior que qualquer carga anterior dele, aparece um selo discreto "Novo recorde" no card (aba Treinos). A primeira carga não conta como recorde. Lógica em `calc.ts` (`personalRecordBefore`, `isNewRecord`).
+2. **Resumo ao concluir o treino:** botão "Concluir treino (X/Y)" no fim da aba Exercícios abre um card com quantos exercícios foram registrados, quantos subiram de carga vs. a semana anterior e quantos recordes — fecha o ciclo do treino. Em `SessionView.tsx`.
+3. **Ranking por evolução:** a página de ranking agora tem duas abas — "Check-ins" (frequência, como antes) e "Evolução %" (ganho médio de carga no período). Cada uma cruza com Semana/Mês/Ano. Novo helper `listFullHistoryAllProfiles` em `db.ts` e `overallEvolutionPct` em `calc.ts`.
+4. **Aviso de estagnação:** banner gentil na aba Evolução listando exercícios do plano atual parados há 3+ semanas ("X parado em Nkg há 3 semanas — considere variar"). Usa `stagnantExercises` em `calc.ts` sobre o histórico completo.
+
+Também: os gráficos de evolução agora usam o **histórico completo do perfil** (todos os planos), então não zeram ao trocar de treino; e há uma página **/demo** com 8 semanas simuladas (inclui um exercício estagnado de propósito para mostrar o aviso) acessível pela home.
+
+### Arquivos alterados nesta rodada
+- `src/lib/calc.ts` (PR, estagnação, evolução geral)
+- `src/lib/db.ts` (`listFullHistoryAllProfiles`)
+- `src/lib/demoData.ts` (dados de demonstração)
+- `src/components/SessionView.tsx` (selo PR + resumo de conclusão)
+- `src/components/EvolucaoView.tsx` (aviso de estagnação + histórico completo)
+- `src/components/Icons.tsx` (ícones medal, flame, alert)
+- `src/app/ranking/page.tsx` (abas Check-ins/Evolução)
+- `src/app/p/[id]/page.tsx` (carrega histórico completo)
+- `src/app/page.tsx` (links de ranking e demo)
+- `src/app/demo/page.tsx` (nova página de demonstração)

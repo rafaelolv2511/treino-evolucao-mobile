@@ -195,6 +195,14 @@ export default function HomePage() {
             </span>
             <Icon name="chevronDown" size={16} className="-rotate-90 text-white/40" />
           </Link>
+
+          <Link
+            href="/demo"
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs font-semibold text-white/70 transition active:scale-[0.98]"
+          >
+            <Icon name="chart" size={15} className="text-glow" />
+            Ver demonstração (2 meses de exemplo)
+          </Link>
         </>
       )}
 

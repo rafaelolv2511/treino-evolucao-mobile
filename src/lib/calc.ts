@@ -172,3 +172,102 @@ export function fmtPct(n: number | null): string {
   const sign = n > 0 ? "+" : "";
   return `${sign}${n.toFixed(1).replace(".", ",")}%`;
 }
+
+// ── Recorde pessoal (PR) ────────────────────────────────────────────────────
+/**
+ * Maior carga já registrada de um exercício ANTES de uma sessão específica.
+ * Usada para saber se a carga de hoje é um novo recorde.
+ */
+export function personalRecordBefore(
+  exerciseId: string,
+  beforeSessionId: string,
+  h: HistoryBundle
+): number | null {
+  const sessionById = new Map(h.sessions.map((s) => [s.id, s]));
+  const target = sessionById.get(beforeSessionId);
+  if (!target) return null;
+  let best: number | null = null;
+  for (const log of h.logs) {
+    if (log.exercise_id !== exerciseId) continue;
+    const session = sessionById.get(log.workout_session_id);
+    if (!session) continue;
+    // considera apenas sessões anteriores (data menor, ou mesma data mas outra sessão)
+    const isBefore =
+      session.workout_date < target.workout_date ||
+      (session.workout_date === target.workout_date && session.id !== beforeSessionId);
+    if (!isBefore) continue;
+    const { load } = bestLoadOfLog(log.id, h.sets);
+    if (load !== null && (best === null || load > best)) best = load;
+  }
+  return best;
+}
+
+/** true se `loadKg` supera o recorde anterior desse exercício (é um novo PR). */
+export function isNewRecord(loadKg: number | null, previousPR: number | null): boolean {
+  if (loadKg === null) return false;
+  if (previousPR === null) return false; // primeira carga não conta como "novo" recorde
+  return loadKg > previousPR;
+}
+
+// ── Detecção de estagnação ──────────────────────────────────────────────────
+export interface StagnationInfo {
+  exerciseId: string;
+  name: string;
+  muscleGroup: string;
+  weeksStalled: number; // há quantas semanas a carga não sobe
+  currentLoadKg: number;
+}
+
+/**
+ * Exercícios cuja carga não aumenta há N semanas ou mais (considerando apenas
+ * semanas realmente registradas, não herdadas). Alimenta o aviso gentil na Evolução.
+ */
+export function stagnantExercises(
+  plan: TrainingPlanJson,
+  h: HistoryBundle,
+  minWeeks = 3
+): StagnationInfo[] {
+  const out: StagnationInfo[] = [];
+  for (const s of plan.sessions) {
+    for (const e of s.exercises) {
+      const real = weeklySeriesForExercise(e.exerciseId, h).filter((p) => !p.inherited && p.loadKg !== null);
+      if (real.length < minWeeks) continue;
+      const current = real[real.length - 1].loadKg!;
+      // conta há quantas semanas registradas a carga não supera a atual
+      let stalled = 0;
+      for (let i = real.length - 1; i >= 0; i--) {
+        if ((real[i].loadKg ?? 0) >= current) stalled++;
+        else break;
+      }
+      // stalled inclui a semana atual; "parada há X semanas" = stalled - 1 semanas sem subir
+      const weeksStalled = stalled;
+      if (weeksStalled >= minWeeks) {
+        out.push({
+          exerciseId: e.exerciseId,
+          name: e.name,
+          muscleGroup: e.primaryMuscleGroup,
+          weeksStalled,
+          currentLoadKg: current,
+        });
+      }
+    }
+  }
+  return out.sort((a, b) => b.weeksStalled - a.weeksStalled);
+}
+
+/**
+ * Evolução geral de um perfil (média das evoluções por exercício válidas),
+ * usando o histórico completo — para o ranking por progresso.
+ */
+export function overallEvolutionPct(exerciseIds: string[], h: HistoryBundle): number | null {
+  const pcts: number[] = [];
+  for (const id of exerciseIds) {
+    const real = weeklySeriesForExercise(id, h).filter((p) => !p.inherited && p.loadKg !== null);
+    if (real.length < 2) continue;
+    const first = real[0].loadKg!;
+    const last = real[real.length - 1].loadKg!;
+    if (first > 0) pcts.push(((last - first) / first) * 100);
+  }
+  if (pcts.length === 0) return null;
+  return pcts.reduce((a, b) => a + b, 0) / pcts.length;
+}

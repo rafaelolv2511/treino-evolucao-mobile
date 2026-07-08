@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { HistoryBundle, fmtKg, suggestLoad, weeklySeriesForExercise } from "@/lib/calc";
+import { HistoryBundle, bestLoadOfLog, fmtKg, isNewRecord, personalRecordBefore, suggestLoad, weeklySeriesForExercise } from "@/lib/calc";
 import { getOrCreateWorkoutSession, saveExerciseLog, updatePlanJson, weekNumberFrom } from "@/lib/db";
 import {
   ExerciseLogRow,
@@ -42,6 +42,7 @@ export default function SessionView({
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<PlanExercise | null>(null);
+  const [showSummary, setShowSummary] = useState(false);
   const timerRef = useRef<RestTimerHandle | null>(null);
 
   const currentWeek = useMemo(() => {
@@ -50,6 +51,34 @@ export default function SessionView({
     const first = [...all].sort()[0];
     return first ? weekNumberFrom(first, workoutSession?.workout_date ?? date) : 1;
   }, [history.sessions, date, workoutSession]);
+
+  // Resumo do dia: exercícios registrados, quantos subiram de carga e quantos recordes.
+  const summary = useMemo(() => {
+    if (!workoutSession) return { logged: 0, total: session.exercises.length, improved: 0, prs: 0, improvedNames: [] as string[] };
+    const logsToday = history.logs.filter((l) => l.workout_session_id === workoutSession.id);
+    let logged = 0;
+    let improved = 0;
+    let prs = 0;
+    const improvedNames: string[] = [];
+    for (const ex of session.exercises) {
+      const log = logsToday.find((l) => l.exercise_id === ex.exerciseId);
+      if (!log) continue;
+      const { load } = bestLoadOfLog(log.id, history.sets);
+      if (load === null) continue;
+      logged++;
+      // comparar com a semana anterior registrada (não herdada)
+      const real = weeklySeriesForExercise(ex.exerciseId, history).filter((p) => !p.inherited && p.loadKg !== null);
+      const prevWeeks = real.filter((p) => p.week < workoutSession.week_number);
+      const prevLoad = prevWeeks.length ? prevWeeks[prevWeeks.length - 1].loadKg! : null;
+      if (prevLoad !== null && load > prevLoad) {
+        improved++;
+        improvedNames.push(ex.name);
+      }
+      const pr = personalRecordBefore(ex.exerciseId, workoutSession.id, history);
+      if (pr !== null && load > pr) prs++;
+    }
+    return { logged, total: session.exercises.length, improved, prs, improvedNames };
+  }, [workoutSession, history, session.exercises]);
 
   async function startDay() {
     setStarting(true);
@@ -189,11 +218,54 @@ export default function SessionView({
                 </div>
               ))}
             </div>
+
+            {workoutSession && summary.logged > 0 && (
+              <button
+                onClick={() => setShowSummary(true)}
+                className="btn btn-ghost mt-5 flex w-full items-center justify-center gap-2"
+              >
+                <Icon name="check" size={17} /> Concluir treino ({summary.logged}/{summary.total})
+              </button>
+            )}
           </div>
         )}
       </div>
 
       <EditExerciseModal exercise={editing} onClose={() => setEditing(null)} onSave={saveExerciseEdit} />
+
+      <Modal open={showSummary} onClose={() => setShowSummary(false)} title={`${session.sessionName} concluído`}>
+        <div className="mb-4 flex items-center justify-center gap-2 text-ok">
+          <Icon name="check" size={22} />
+          <span className="font-display text-lg font-bold">Bom treino!</span>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="glass p-3">
+            <p className="num font-display text-2xl font-bold text-glow">{summary.logged}</p>
+            <p className="text-[10px] text-white/55">exercícios</p>
+          </div>
+          <div className="glass p-3">
+            <p className="num font-display text-2xl font-bold text-ok">{summary.improved}</p>
+            <p className="text-[10px] text-white/55">subiram carga</p>
+          </div>
+          <div className="glass p-3">
+            <p className="num font-display text-2xl font-bold text-amber-300">{summary.prs}</p>
+            <p className="text-[10px] text-white/55">recordes</p>
+          </div>
+        </div>
+        {summary.improvedNames.length > 0 && (
+          <p className="mt-3 text-xs text-white/60">
+            Subiu de carga em: {summary.improvedNames.join(", ")}.
+          </p>
+        )}
+        {summary.improved === 0 && summary.logged > 0 && (
+          <p className="mt-3 text-xs text-white/55">
+            Manteve as cargas hoje — consistência também é progresso. Bora pra próxima!
+          </p>
+        )}
+        <button onClick={() => setShowSummary(false)} className="btn btn-primary mt-4 w-full">
+          Fechar
+        </button>
+      </Modal>
     </div>
   );
 }
@@ -251,6 +323,17 @@ function ExerciseCard({
   const suggestion = useMemo(() => suggestLoad(exercise.exerciseId, history), [exercise.exerciseId, history]);
   const hasDataToday = existingSets.some((s) => s.load_kg !== null);
 
+  // Recorde pessoal: maior carga registrada antes de hoje, e se a de hoje superou.
+  const prevPR = useMemo(
+    () => (workoutSession ? personalRecordBefore(exercise.exerciseId, workoutSession.id, history) : null),
+    [exercise.exerciseId, workoutSession, history]
+  );
+  const todayBestLoad = useMemo(() => {
+    const loads = existingSets.map((s) => (s.load_kg == null ? null : Number(s.load_kg))).filter((n): n is number => n !== null);
+    return loads.length ? Math.max(...loads) : null;
+  }, [existingSets]);
+  const isPR = isNewRecord(todayBestLoad, prevPR);
+
   async function save() {
     if (!workoutSession) return;
     setSaving(true);
@@ -287,6 +370,11 @@ function ExerciseCard({
             {hasDataToday && <span className="mr-1 inline-block align-middle text-ok"><Icon name="check" size={14} /></span>}
             {exercise.name}
           </p>
+          {isPR && (
+            <span className="mt-1 inline-flex items-center gap-1 rounded-lg bg-amber-300/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+              <Icon name="medal" size={12} /> Novo recorde
+            </span>
+          )}
           <p className="mt-0.5 truncate text-[11px] text-white/50">
             {exercise.primaryMuscleGroup}
             {exercise.secondaryMuscleGroups?.length ? ` · ${exercise.secondaryMuscleGroups.join(", ")}` : ""}
