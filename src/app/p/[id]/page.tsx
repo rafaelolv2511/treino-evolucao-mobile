@@ -26,35 +26,48 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [notFound, setNotFound] = useState(false);
+
   const refresh = useCallback(async () => {
     try {
-      const [p, pl] = await Promise.all([getProfile(profileId), getActivePlan(profileId)]);
-      setProfile(p);
-      setPlan(pl);
-
-      // Histórico COMPLETO do perfil (todos os planos) — alimenta os gráficos de
-      // evolução, que devem persistir mesmo depois de trocar de treino.
-      const allSessions = await listWorkoutSessions(profileId);
-      const allLogs = await listExerciseLogsForSessions(allSessions.map((s) => s.id));
-      const allSets = await listSetLogsForExerciseLogs(allLogs.map((l) => l.id));
-      setFullHistory({ sessions: allSessions, logs: allLogs, sets: allSets });
-
-      // Histórico do plano ATIVO — usado na aba Treinos, onde as semanas S1..Sn
-      // e as pílulas semanais são relativas ao ciclo atual.
-      if (pl) {
-        const sessions = allSessions.filter((s) => s.training_plan_id === pl.id);
-        const sessionIds = new Set(sessions.map((s) => s.id));
-        const logs = allLogs.filter((l) => sessionIds.has(l.workout_session_id));
-        const logIds = new Set(logs.map((l) => l.id));
-        const sets = allSets.filter((s) => logIds.has(s.exercise_log_id));
-        setHistory({ sessions, logs, sets });
-      } else {
-        setHistory({ sessions: [], logs: [], sets: [] });
+      // 1) Carrega o perfil primeiro. Só isso decide "encontrado ou não".
+      const p = await getProfile(profileId);
+      if (!p) {
+        setNotFound(true);
+        setLoading(false);
+        return;
       }
-      setError(null);
+      setProfile(p);
+      setNotFound(false);
+      setLoading(false); // já pode mostrar a tela do perfil
+
+      // 2) Dados secundários: qualquer falha aqui NÃO derruba a tela do perfil.
+      try {
+        const pl = await getActivePlan(profileId);
+        setPlan(pl);
+
+        const allSessions = await listWorkoutSessions(profileId);
+        const allLogs = await listExerciseLogsForSessions(allSessions.map((s) => s.id));
+        const allSets = await listSetLogsForExerciseLogs(allLogs.map((l) => l.id));
+        setFullHistory({ sessions: allSessions, logs: allLogs, sets: allSets });
+
+        if (pl) {
+          const sessions = allSessions.filter((s) => s.training_plan_id === pl.id);
+          const sessionIds = new Set(sessions.map((s) => s.id));
+          const logs = allLogs.filter((l) => sessionIds.has(l.workout_session_id));
+          const logIds = new Set(logs.map((l) => l.id));
+          const sets = allSets.filter((s) => logIds.has(s.exercise_log_id));
+          setHistory({ sessions, logs, sets });
+        } else {
+          setHistory({ sessions: [], logs: [], sets: [] });
+        }
+        setError(null);
+      } catch (inner: any) {
+        // Perfil abre normalmente; só avisa que os dados de treino falharam.
+        setError("Não foi possível carregar os treinos agora. Puxe para atualizar.");
+      }
     } catch (e: any) {
-      setError(e.message ?? "Falha ao carregar dados do perfil.");
-    } finally {
+      setError(e.message ?? "Falha ao carregar o perfil.");
       setLoading(false);
     }
   }, [profileId]);
@@ -64,10 +77,13 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
   }, [refresh]);
 
   if (loading) return <Spinner label="Abrindo perfil…" />;
-  if (!profile)
+  if (notFound || !profile)
     return (
       <div className="glass fade-in p-6 text-center">
         <p className="text-white/70">Perfil não encontrado.</p>
+        <p className="mt-1 text-xs text-white/45">
+          Ele pode ter sido removido, ou o link está desatualizado.
+        </p>
         <Link href="/" className="btn btn-ghost mt-4 inline-flex items-center gap-2">
           <Icon name="arrowLeft" size={15} /> Voltar aos perfis
         </Link>
