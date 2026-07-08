@@ -7,6 +7,7 @@ import { deactivatePlans, getNotes, insertPlan, listBodyMetrics, saveExportedRep
 import { HistoryBundle } from "@/lib/calc";
 import { ProfileRow, TrainingPlanRow } from "@/lib/types";
 import { Modal } from "./ui";
+import Icon from "./Icons";
 
 const EXAMPLE = `{
   "profileName": "Rafael",
@@ -141,8 +142,8 @@ export default function ImportPlan({
             </p>
           )}
 
-          <label className="btn btn-ghost w-full cursor-pointer">
-            📄 Escolher arquivo .json
+          <label className="btn btn-ghost flex w-full cursor-pointer items-center justify-center gap-2">
+            <Icon name="file" size={17} /> Escolher arquivo .json
             <input
               type="file"
               accept=".json,application/json"

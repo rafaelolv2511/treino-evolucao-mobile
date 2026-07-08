@@ -13,10 +13,19 @@ import {
   BarChart,
 } from "recharts";
 import { bestLoadOfLog, evolutionForPlan, fmtKg, fmtPct, HistoryBundle } from "@/lib/calc";
-import { getNotes, listBodyMetrics, saveExportedReport, saveNote, upsertBodyMetric } from "@/lib/db";
+import {
+  clearProfileTrainingData,
+  deleteBodyMetric,
+  getNotes,
+  listBodyMetrics,
+  saveExportedReport,
+  saveNote,
+  upsertBodyMetric,
+} from "@/lib/db";
 import { buildFullReport, downloadFile } from "@/lib/report";
 import { BodyMetricRow, ProfileRow, TrainingPlanRow } from "@/lib/types";
-import { Section, Spinner, TabBar } from "./ui";
+import { Modal, Section, Spinner, TabBar } from "./ui";
+import Icon from "./Icons";
 
 function todayISO() {
   const d = new Date();
@@ -36,10 +45,12 @@ export default function EvolucaoView({
   profile,
   plan,
   history,
+  onChanged,
 }: {
   profile: ProfileRow;
   plan: TrainingPlanRow | null;
   history: HistoryBundle;
+  onChanged: () => void;
 }) {
   const [metrics, setMetrics] = useState<BodyMetricRow[] | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({ geral: "", evolucao: "" });
@@ -51,6 +62,8 @@ export default function EvolucaoView({
   const [exportMsg, setExportMsg] = useState<string | null>(null);
   const [granularity, setGranularity] = useState<"mes" | "ano">("mes");
   const [selectedExercise, setSelectedExercise] = useState<string>("");
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -143,6 +156,29 @@ export default function EvolucaoView({
     }
   }
 
+  async function removeWeight(id: string) {
+    setSavingW(true);
+    try {
+      await deleteBodyMetric(id);
+      setMetrics(await listBodyMetrics(profile.id));
+    } finally {
+      setSavingW(false);
+    }
+  }
+
+  async function clearData() {
+    setClearing(true);
+    try {
+      await clearProfileTrainingData(profile.id);
+      setMetrics(await listBodyMetrics(profile.id));
+      setSelectedExercise("");
+      setConfirmClear(false);
+      onChanged();
+    } finally {
+      setClearing(false);
+    }
+  }
+
   async function persistNote(type: "geral" | "evolucao") {
     setSavingNote(type);
     try {
@@ -185,10 +221,13 @@ export default function EvolucaoView({
             value={wKg}
             onChange={(e) => setWKg(e.target.value)}
           />
-          <button onClick={saveWeight} disabled={savingW || !wKg.trim()} className="btn btn-primary">
-            {savingW ? "…" : "＋"}
+          <button onClick={saveWeight} disabled={savingW || !wKg.trim()} className="btn btn-primary" aria-label="Salvar peso">
+            {savingW ? "…" : <Icon name="plus" size={18} />}
           </button>
         </div>
+        <p className="mt-2 text-[11px] text-white/40">
+          Salvar na mesma data substitui o valor. Toque na lixeira para apagar um registro.
+        </p>
         {metrics.length > 0 ? (
           <div className="mt-3 h-44">
             <ResponsiveContainer width="100%" height="100%">
@@ -203,6 +242,26 @@ export default function EvolucaoView({
           </div>
         ) : (
           <p className="mt-3 text-xs text-white/45">Registre seu primeiro peso para ver o gráfico.</p>
+        )}
+        {metrics.length > 0 && (
+          <div className="mt-3 max-h-40 space-y-1.5 overflow-y-auto">
+            {[...metrics].reverse().map((m) => (
+              <div key={m.id} className="flex items-center justify-between rounded-xl bg-white/5 px-3 py-2 text-sm">
+                <span className="text-white/70">{m.date.split("-").reverse().join("/")}</span>
+                <span className="num flex items-center gap-3">
+                  <span className="font-semibold">{fmtKg(Number(m.weight_kg))}</span>
+                  <button
+                    onClick={() => removeWeight(m.id)}
+                    disabled={savingW}
+                    aria-label={`Apagar peso de ${m.date}`}
+                    className="text-white/40 transition hover:text-red-300"
+                  >
+                    <Icon name="trash" size={15} />
+                  </button>
+                </span>
+              </div>
+            ))}
+          </div>
         )}
       </Section>
 
@@ -380,12 +439,47 @@ export default function EvolucaoView({
           estagnados, anotações) em JSON e Markdown — com resumo final pronto para colar no ChatGPT e pedir um novo
           treino.
         </p>
-        <button onClick={handleExport} disabled={exporting || !plan} className="btn btn-primary w-full">
-          {exporting ? "Gerando…" : "📤 Exportar evolução"}
+        <button
+          onClick={handleExport}
+          disabled={exporting || !plan}
+          className="btn btn-primary flex w-full items-center justify-center gap-2"
+        >
+          <Icon name="download" size={17} />
+          {exporting ? "Gerando…" : "Exportar evolução"}
         </button>
         {!plan && <p className="mt-2 text-xs text-white/45">Importe um treino primeiro.</p>}
         {exportMsg && <p className="mt-2 text-xs text-emerald-300">{exportMsg}</p>}
       </Section>
+
+      {/* 6. Limpar dados de teste */}
+      <Section title="Limpar dados">
+        <p className="mb-3 text-xs text-white/55">
+          Apaga todos os check-ins, cargas e pesos deste perfil, mas mantém o treino importado. Bom para zerar dados
+          de teste sem precisar reimportar o JSON.
+        </p>
+        <button
+          onClick={() => setConfirmClear(true)}
+          className="btn btn-danger flex w-full items-center justify-center gap-2"
+        >
+          <Icon name="trash" size={16} />
+          Limpar cargas e pesos
+        </button>
+      </Section>
+
+      <Modal open={confirmClear} onClose={() => setConfirmClear(false)} title="Limpar dados do perfil">
+        <p className="text-sm text-white/80">
+          Isso apaga <strong>todos os treinos registrados, cargas e pesos</strong> de{" "}
+          <strong>{profile.name}</strong>. O treino importado (Treinos A–E) é mantido. Não dá para desfazer.
+        </p>
+        <div className="mt-4 flex gap-2">
+          <button onClick={() => setConfirmClear(false)} className="btn btn-ghost flex-1">
+            Cancelar
+          </button>
+          <button onClick={clearData} disabled={clearing} className="btn btn-danger flex-1">
+            {clearing ? "Limpando…" : "Limpar tudo"}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

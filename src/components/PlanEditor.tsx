@@ -4,6 +4,7 @@ import { useState } from "react";
 import { updatePlanJson } from "@/lib/db";
 import { PlanExercise, TrainingPlanJson, TrainingPlanRow } from "@/lib/types";
 import { Modal } from "./ui";
+import Icon from "./Icons";
 
 const EMPTY: PlanExercise = {
   exerciseId: "",
@@ -32,6 +33,7 @@ export default function PlanEditor({
 }) {
   const [draft, setDraft] = useState<TrainingPlanJson | null>(null);
   const [editing, setEditing] = useState<{ sessionKey: string; exercise: PlanExercise; isNew: boolean } | null>(null);
+  const [renaming, setRenaming] = useState<{ sessionKey: string; exerciseId: string; name: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,6 +60,16 @@ export default function PlanEditor({
       const from = j.sessions.find((s) => s.sessionKey === fromKey)!;
       from.exercises = from.exercises.filter((e) => e.exerciseId !== exerciseId);
     });
+  }
+
+  function renameExercise(sessionKey: string, exerciseId: string, name: string) {
+    if (!name.trim()) return;
+    mutate((j) => {
+      const s = j.sessions.find((x) => x.sessionKey === sessionKey)!;
+      const ex = s.exercises.find((e) => e.exerciseId === exerciseId);
+      if (ex) ex.name = name.trim();
+    });
+    setRenaming(null);
   }
 
   function upsertExercise(sessionKey: string, ex: PlanExercise, isNew: boolean) {
@@ -119,9 +131,9 @@ export default function PlanEditor({
               </p>
               <button
                 onClick={() => setEditing({ sessionKey: s.sessionKey, exercise: { ...EMPTY }, isNew: true })}
-                className="btn btn-ghost !min-h-0 !px-2.5 !py-1 text-xs"
+                className="btn btn-ghost flex !min-h-0 items-center gap-1 !px-2.5 !py-1 text-xs"
               >
-                ＋ Exercício
+                <Icon name="plus" size={13} /> Exercício
               </button>
             </div>
             <div className="space-y-2">
@@ -133,22 +145,30 @@ export default function PlanEditor({
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     <button
-                      onClick={() => setEditing({ sessionKey: s.sessionKey, exercise: { ...e }, isNew: false })}
-                      className="rounded-lg bg-white/8 px-2 py-1 text-[11px]"
+                      onClick={() => setRenaming({ sessionKey: s.sessionKey, exerciseId: e.exerciseId, name: e.name })}
+                      className="flex items-center gap-1 rounded-lg bg-white/8 px-2 py-1 text-[11px] text-white/85"
                     >
-                      ✎ Editar
+                      <Icon name="pencil" size={12} /> Renomear
+                    </button>
+                    <button
+                      onClick={() => setEditing({ sessionKey: s.sessionKey, exercise: { ...e }, isNew: false })}
+                      className="rounded-lg bg-white/8 px-2 py-1 text-[11px] text-white/85"
+                    >
+                      Editar tudo
                     </button>
                     {json.sessions.length > 1 && (
                       <select
-                        className="rounded-lg border border-white/10 bg-white/8 px-2 py-1 text-[11px]"
+                        className="rounded-lg border border-white/10 bg-white/10 px-2 py-1 text-[11px] text-white/85"
                         value=""
                         onChange={(ev) => ev.target.value && moveExercise(e.exerciseId, s.sessionKey, ev.target.value)}
                       >
-                        <option value="">Mover para…</option>
+                        <option value="" className="bg-ink text-white">
+                          Mover para…
+                        </option>
                         {json.sessions
                           .filter((x) => x.sessionKey !== s.sessionKey)
                           .map((x) => (
-                            <option key={x.sessionKey} value={x.sessionKey}>
+                            <option key={x.sessionKey} value={x.sessionKey} className="bg-ink text-white">
                               Treino {x.sessionKey}
                             </option>
                           ))}
@@ -174,6 +194,32 @@ export default function PlanEditor({
       <button onClick={saveAll} disabled={busy} className="btn btn-primary mt-4 w-full">
         {busy ? "Salvando…" : "Salvar alterações no perfil"}
       </button>
+
+      {renaming && (
+        <div className="mt-4 rounded-2xl border border-glow/30 bg-glow/5 p-3">
+          <p className="mb-2 flex items-center gap-1.5 text-sm font-bold">
+            <Icon name="pencil" size={14} /> Renomear exercício
+          </p>
+          <input
+            className="field !min-h-[44px] text-sm"
+            value={renaming.name}
+            onChange={(e) => setRenaming({ ...renaming, name: e.target.value })}
+            autoFocus
+          />
+          <div className="mt-3 flex gap-2">
+            <button onClick={() => setRenaming(null)} className="btn btn-ghost flex-1 !min-h-[44px]">
+              Cancelar
+            </button>
+            <button
+              onClick={() => renameExercise(renaming.sessionKey, renaming.exerciseId, renaming.name)}
+              disabled={!renaming.name.trim()}
+              className="btn btn-primary flex-1 !min-h-[44px]"
+            >
+              Salvar nome
+            </button>
+          </div>
+        </div>
+      )}
 
       {editing && (
         <ExerciseForm

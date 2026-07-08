@@ -6,6 +6,7 @@ import { ProfileRow, TrainingPlanRow } from "@/lib/types";
 import ImportPlan from "./ImportPlan";
 import SessionView from "./SessionView";
 import PlanEditor from "./PlanEditor";
+import Icon from "./Icons";
 
 export default function TreinosView({
   profile,
@@ -89,11 +90,11 @@ export default function TreinosView({
       })}
 
       <div className="flex gap-2 pt-2">
-        <button onClick={() => setEditorOpen(true)} className="btn btn-ghost flex-1">
-          ✏️ Editar treino
+        <button onClick={() => setEditorOpen(true)} className="btn btn-ghost flex flex-1 items-center justify-center gap-2">
+          <Icon name="pencil" size={16} /> Editar treino
         </button>
-        <button onClick={() => setImportOpen(true)} className="btn btn-ghost flex-1">
-          📄 Novo JSON
+        <button onClick={() => setImportOpen(true)} className="btn btn-ghost flex flex-1 items-center justify-center gap-2">
+          <Icon name="file" size={16} /> Novo JSON
         </button>
       </div>
 

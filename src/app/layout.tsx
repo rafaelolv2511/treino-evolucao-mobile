@@ -4,6 +4,19 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Treino Evolução",
   description: "Registre cargas, acompanhe sua evolução e exporte relatórios inteligentes.",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Treino Evolução",
+  },
 };
 
 export const viewport: Viewport = {
@@ -26,7 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="font-body">
         <div className="bg-orbs" aria-hidden="true" />
-        <main className="relative z-10 mx-auto min-h-dvh w-full max-w-md px-4 pb-28 pt-6">{children}</main>
+        <main className="relative z-10 mx-auto min-h-dvh w-full max-w-md px-4 pb-10 pt-6">{children}</main>
       </body>
     </html>
   );

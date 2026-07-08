@@ -14,6 +14,7 @@ import {
 } from "@/lib/types";
 import RestTimer, { RestTimerHandle } from "./RestTimer";
 import { Modal, TabBar } from "./ui";
+import Icon from "./Icons";
 
 function todayISO() {
   const d = new Date();
@@ -93,8 +94,8 @@ export default function SessionView({
   return (
     <div className="fade-in">
       <div className="mb-3 flex items-center gap-3">
-        <button onClick={onBack} className="btn btn-ghost !min-h-0 !px-3 !py-2 text-sm">
-          ←
+        <button onClick={onBack} className="btn btn-ghost !min-h-0 !px-3 !py-2 text-sm" aria-label="Voltar">
+          <Icon name="arrowLeft" size={16} />
         </button>
         <div className="min-w-0">
           <h2 className="font-display truncate text-lg font-bold">{session.sessionName}</h2>
@@ -137,9 +138,9 @@ export default function SessionView({
                 {m.durationSeconds ? (
                   <button
                     onClick={() => timerRef.current?.start(m.durationSeconds!)}
-                    className="btn btn-ghost mt-3 !min-h-0 !px-3 !py-2 text-xs"
+                    className="btn btn-ghost mt-3 flex !min-h-0 items-center gap-1.5 !px-3 !py-2 text-xs"
                   >
-                    ⏱ Cronometrar {m.durationSeconds}s
+                    <Icon name="timer" size={14} /> Cronometrar {m.durationSeconds}s
                   </button>
                 ) : null}
               </div>
@@ -150,7 +151,7 @@ export default function SessionView({
           <div>
             {!workoutSession ? (
               <div className="glass glass-strong mb-4 p-4">
-                <p className="text-sm font-semibold">📅 Data do treino</p>
+                <p className="flex items-center gap-1.5 text-sm font-semibold"><Icon name="calendar" size={15} /> Data do treino</p>
                 <p className="mt-1 text-xs text-white/55">
                   Defina a data antes de registrar a primeira carga. Ela vale para toda a sessão de hoje.
                 </p>
@@ -283,7 +284,7 @@ function ExerciseCard({
       <button onClick={() => setOpen(!open)} className="flex w-full items-start gap-3 p-4 text-left">
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold">
-            {hasDataToday && <span className="mr-1 text-ok">✓</span>}
+            {hasDataToday && <span className="mr-1 inline-block align-middle text-ok"><Icon name="check" size={14} /></span>}
             {exercise.name}
           </p>
           <p className="mt-0.5 truncate text-[11px] text-white/50">
@@ -305,9 +306,9 @@ function ExerciseCard({
           className="shrink-0 rounded-xl bg-white/6 px-2 py-1 text-sm text-white/50"
           aria-label={`Editar ${exercise.name}`}
         >
-          ✎
+          <Icon name="pencil" size={14} />
         </span>
-        <span className={`mt-1 text-white/40 transition ${open ? "rotate-180" : ""}`}>▾</span>
+        <span className={`mt-1 text-white/40 transition ${open ? "rotate-180" : ""}`}><Icon name="chevronDown" size={16} /></span>
       </button>
 
       {open && (
@@ -325,7 +326,9 @@ function ExerciseCard({
             ))}
             <div className="week-pill current">
               <p className="text-[10px] font-bold text-glow">S{currentWeek}</p>
-              <p className="num text-sm font-semibold">{hasDataToday ? "hoje ✓" : "hoje"}</p>
+              <p className="num flex items-center justify-center gap-1 text-sm font-semibold">
+                hoje{hasDataToday && <Icon name="check" size={12} className="text-ok" />}
+              </p>
             </div>
           </div>
 
@@ -378,11 +381,11 @@ function ExerciseCard({
               />
 
               <div className="mt-3 flex gap-2">
-                <button onClick={onTimer} className="btn btn-ghost flex-1">
-                  ⏱ {exercise.suggestedRestSeconds}s
+                <button onClick={onTimer} className="btn btn-ghost flex flex-1 items-center justify-center gap-1.5">
+                  <Icon name="timer" size={15} /> {exercise.suggestedRestSeconds}s
                 </button>
                 <button onClick={save} disabled={saving} className="btn btn-primary flex-[1.4]">
-                  {saving ? "Salvando…" : savedFlash ? "Salvo ✓" : "Salvar"}
+                  {saving ? "Salvando…" : savedFlash ? "Salvo" : "Salvar"}
                 </button>
               </div>
             </div>

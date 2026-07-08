@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Icon from "./Icons";
 
 export interface RestTimerHandle {
   start: (seconds: number) => void;
@@ -42,7 +43,7 @@ export default function RestTimer({ handleRef }: { handleRef: React.MutableRefOb
     <div className="glass glass-strong sticky top-2 z-30 mb-4 p-3">
       {remaining === null ? (
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-white/60">⏱ Descanso</span>
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-white/60"><Icon name="timer" size={14} /> Descanso</span>
           <div className="ml-auto flex gap-2">
             {[60, 90, 120].map((s) => (
               <button key={s} onClick={() => handleRef.current?.start(s)} className="btn btn-ghost !min-h-0 !px-3 !py-2 text-xs">
@@ -55,14 +56,14 @@ export default function RestTimer({ handleRef }: { handleRef: React.MutableRefOb
         <div>
           <div className="flex items-center justify-between">
             <span className={`num font-display text-2xl font-bold ${remaining === 0 ? "text-ok" : "text-glow"}`}>
-              {remaining === 0 ? "Bora! 💪" : fmt(remaining)}
+              {remaining === 0 ? "Descanso feito" : fmt(remaining)}
             </span>
             <div className="flex gap-2">
-              <button onClick={() => handleRef.current?.start(total)} className="btn btn-ghost !min-h-0 !px-3 !py-1.5 text-xs">
-                ↺
+              <button onClick={() => handleRef.current?.start(total)} className="btn btn-ghost !min-h-0 !px-3 !py-1.5 text-xs" aria-label="Reiniciar">
+                <Icon name="rotate" size={15} />
               </button>
-              <button onClick={() => setRemaining(null)} className="btn btn-ghost !min-h-0 !px-3 !py-1.5 text-xs">
-                ✕
+              <button onClick={() => setRemaining(null)} className="btn btn-ghost !min-h-0 !px-3 !py-1.5 text-xs" aria-label="Fechar timer">
+                <Icon name="x" size={15} />
               </button>
             </div>
           </div>

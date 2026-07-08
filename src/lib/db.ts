@@ -41,6 +41,15 @@ export async function getProfile(profileId: string): Promise<ProfileRow | null> 
   return data;
 }
 
+/** Salva a foto do perfil (data URL redimensionada no cliente). */
+export async function updateProfileAvatar(profileId: string, avatar: string | null): Promise<void> {
+  const { error } = await supabase
+    .from("profiles")
+    .update({ avatar, updated_at: new Date().toISOString() })
+    .eq("id", profileId);
+  if (error) throw error;
+}
+
 // ── Planos de treino ────────────────────────────────────────────────────────
 export async function getActivePlan(profileId: string): Promise<TrainingPlanRow | null> {
   const { data, error } = await supabase
@@ -106,6 +115,11 @@ export async function upsertBodyMetric(profileId: string, date: string, weightKg
   if (error) throw error;
 }
 
+export async function deleteBodyMetric(id: string): Promise<void> {
+  const { error } = await supabase.from("body_metrics").delete().eq("id", id);
+  if (error) throw error;
+}
+
 // ── Sessões de treino ───────────────────────────────────────────────────────
 export async function listWorkoutSessions(profileId: string, planId?: string): Promise<WorkoutSessionRow[]> {
   let q = supabase.from("workout_sessions").select("*").eq("profile_id", profileId).order("workout_date");
@@ -158,6 +172,41 @@ export function weekNumberFrom(firstDate: string, date: string): number {
   const b = new Date(date + "T00:00:00");
   const days = Math.round((b.getTime() - a.getTime()) / 86400000);
   return Math.max(1, Math.floor(days / 7) + 1);
+}
+
+/** Apaga o treino de um dia inteiro (sessão + registros e séries em cascata). */
+export async function deleteWorkoutSession(workoutSessionId: string): Promise<void> {
+  const { error } = await supabase.from("workout_sessions").delete().eq("id", workoutSessionId);
+  if (error) throw error;
+}
+
+/** Limpa o registro de um exercício em um dia (log + séries em cascata). */
+export async function deleteExerciseLog(workoutSessionId: string, exerciseId: string): Promise<void> {
+  const { error } = await supabase
+    .from("exercise_logs")
+    .delete()
+    .eq("workout_session_id", workoutSessionId)
+    .eq("exercise_id", exerciseId);
+  if (error) throw error;
+}
+
+/**
+ * Limpa todos os registros de treino e peso de um perfil, mantendo o plano
+ * (treino) importado. Útil para zerar dados de teste sem reimportar o JSON.
+ * As séries e logs são apagados em cascata ao remover as sessões.
+ */
+export async function clearProfileTrainingData(profileId: string): Promise<void> {
+  const { error: e1 } = await supabase.from("workout_sessions").delete().eq("profile_id", profileId);
+  if (e1) throw e1;
+  const { error: e2 } = await supabase.from("body_metrics").delete().eq("profile_id", profileId);
+  if (e2) throw e2;
+}
+
+/** Todas as sessões de todos os perfis (para o ranking de check-ins). */
+export async function listSessionsAllProfiles(): Promise<Pick<WorkoutSessionRow, "profile_id" | "workout_date">[]> {
+  const { data, error } = await supabase.from("workout_sessions").select("profile_id, workout_date");
+  if (error) throw error;
+  return data ?? [];
 }
 
 // ── Logs de exercício e séries ──────────────────────────────────────────────

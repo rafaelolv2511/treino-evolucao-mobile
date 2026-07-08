@@ -41,6 +41,7 @@ export interface TrainingPlanJson {
 export interface ProfileRow {
   id: string;
   name: string;
+  avatar: string | null;
   created_at: string;
   updated_at: string;
 }

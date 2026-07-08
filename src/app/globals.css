@@ -117,6 +117,18 @@ input[type="date"] {
   color-scheme: dark;
 }
 
+/* Selects no iOS herdavam cor escura sobre fundo escuro */
+select {
+  color: #e8ecf4;
+  color-scheme: dark;
+  -webkit-appearance: none;
+  appearance: none;
+}
+select option {
+  background: #0d1420;
+  color: #e8ecf4;
+}
+
 .num {
   font-variant-numeric: tabular-nums;
 }

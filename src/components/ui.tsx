@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
+import Icon from "./Icons";
 
 export function Modal({
   open,
@@ -20,7 +21,7 @@ export function Modal({
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-lg font-bold">{title}</h2>
           <button onClick={onClose} className="btn btn-ghost !min-h-0 !rounded-xl !px-3 !py-1.5" aria-label="Fechar">
-            ✕
+            <Icon name="x" size={16} />
           </button>
         </div>
         {children}
