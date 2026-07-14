@@ -85,7 +85,7 @@ export default function ProfileClient({ profileId }: { profileId: string }) {
       {error && <p className="glass mb-4 p-3 text-sm text-red-300">{error}</p>}
 
       {tab === "treinos" ? (
-        <TreinosView profile={profile} plan={plan} history={history} onChanged={refresh} />
+        <TreinosView profile={profile} plan={plan} history={history} fullHistory={fullHistory} onChanged={refresh} />
       ) : (
         <EvolucaoView profile={profile} plan={plan} history={history} fullHistory={fullHistory} onChanged={refresh} />
       )}
