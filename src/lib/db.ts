@@ -1,6 +1,8 @@
 import { supabase } from "./supabase";
+import { CardioInput, estimateCalories } from "./calc";
 import {
   BodyMetricRow,
+  ProfileGroupRow,
   ExerciseLogRow,
   ProfileNoteRow,
   ProfileRow,
@@ -20,13 +22,30 @@ export async function listProfiles(): Promise<ProfileRow[]> {
 }
 
 export async function createProfile(name: string): Promise<ProfileRow> {
+  const clean = name.trim();
+  if (!clean) throw new Error("Informe um nome para o perfil.");
+
   const existing = await listProfiles();
+
+  // Se já existe um perfil com esse nome, reaproveita em vez de falhar na
+  // restrição de unicidade (evita o erro ao recriar um perfil recém-apagado).
+  const same = existing.find((p) => p.name.toLowerCase() === clean.toLowerCase());
+  if (same) return same;
+
   if (existing.length >= MAX_PROFILES) throw new Error(`Limite de ${MAX_PROFILES} perfis atingido.`);
-  const { data, error } = await supabase.from("profiles").insert({ name: name.trim() }).select().single();
+
+  const { data, error } = await supabase.from("profiles").insert({ name: clean }).select().single();
   if (error) {
-    if (error.code === "23505") throw new Error("Já existe um perfil com esse nome.");
+    // Corrida: alguém/algum resíduo com o mesmo nome — relê e devolve o existente.
+    if (error.code === "23505") {
+      const again = await listProfiles();
+      const found = again.find((p) => p.name.toLowerCase() === clean.toLowerCase());
+      if (found) return found;
+      throw new Error("Já existe um perfil com esse nome.");
+    }
     throw error;
   }
+  if (!data) throw new Error("Não foi possível criar o perfil. Tente novamente.");
   return data;
 }
 
@@ -271,7 +290,7 @@ export async function saveExerciseLog(
   exercise: { exerciseId: string; name: string; primaryMuscleGroup: string; targetRIR: number },
   notes: string,
   sets: SetInput[]
-): Promise<void> {
+): Promise<{ startedAt: string | null }> {
   const { data: log, error: e1 } = await supabase
     .from("exercise_logs")
     .upsert(
@@ -299,6 +318,21 @@ export async function saveExerciseLog(
     const { error: e3 } = await supabase.from("set_logs").insert(rows);
     if (e3) throw e3;
   }
+
+  let startedAt: string | null = null;
+  if (sets.some((set) => set.load_kg !== null)) {
+    const now = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("workout_sessions")
+      .update({ started_at: now })
+      .eq("id", workoutSessionId)
+      .is("started_at", null)
+      .select("started_at")
+      .maybeSingle();
+    if (error) throw error;
+    startedAt = data?.started_at ?? null;
+  }
+  return { startedAt };
 }
 
 // ── Observações do perfil ───────────────────────────────────────────────────
@@ -334,4 +368,148 @@ export async function saveExportedReport(
     report_markdown: reportMarkdown,
   });
   if (error) throw error;
+}
+
+
+// ── Grupos de perfis ────────────────────────────────────────────────────────
+export async function listGroups(): Promise<ProfileGroupRow[]> {
+  const { data, error } = await supabase.from("profile_groups").select("*").order("created_at");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function createGroup(name: string): Promise<ProfileGroupRow> {
+  const clean = name.trim();
+  if (!clean) throw new Error("Informe um nome para o grupo.");
+  const { data, error } = await supabase.from("profile_groups").insert({ name: clean }).select().single();
+  if (error) {
+    if (error.code === "23505") {
+      const all = await listGroups();
+      const found = all.find((g) => g.name.toLowerCase() === clean.toLowerCase());
+      if (found) return found;
+    }
+    throw error;
+  }
+  return data;
+}
+
+export async function deleteGroup(groupId: string): Promise<void> {
+  // perfis do grupo voltam para "sem grupo" (on delete set null)
+  const { error } = await supabase.from("profile_groups").delete().eq("id", groupId);
+  if (error) throw error;
+}
+
+export async function setProfileGroup(profileId: string, groupId: string | null): Promise<void> {
+  const { error } = await supabase
+    .from("profiles")
+    .update({ group_id: groupId, updated_at: new Date().toISOString() })
+    .eq("id", profileId);
+  if (error) throw error;
+}
+
+// ── PIN opcional do perfil ──────────────────────────────────────────────────
+export async function hashPin(pin: string): Promise<string> {
+  const data = new TextEncoder().encode(`rtrainning:${pin.trim()}`);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+export async function setProfilePin(profileId: string, pin: string | null): Promise<void> {
+  const pin_hash = pin && pin.trim() ? await hashPin(pin) : null;
+  const { error } = await supabase
+    .from("profiles")
+    .update({ pin_hash, updated_at: new Date().toISOString() })
+    .eq("id", profileId);
+  if (error) throw error;
+}
+
+// ── Conclusão de treino (check-in válido) ───────────────────────────────────
+/** Marca a sessão como concluída (check-in). Chamado ao "Concluir treino" com >= 40% dos exercícios registrados. */
+/** Inicia o cronometro geral do treino (botao play). Grava started_at apenas se ainda estiver nulo. */
+export async function startWorkoutTimer(workoutSessionId: string): Promise<string> {
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("workout_sessions")
+    .update({ started_at: now })
+    .eq("id", workoutSessionId)
+    .is("started_at", null);
+  if (error) throw error;
+  const { data, error: e2 } = await supabase
+    .from("workout_sessions")
+    .select("started_at")
+    .eq("id", workoutSessionId)
+    .single();
+  if (e2) throw e2;
+  return data.started_at ?? now;
+}
+
+export async function markSessionCompleted(
+  workoutSessionId: string,
+  cardio: CardioInput | null = null
+): Promise<WorkoutSessionRow> {
+  const { data: session, error: sessionError } = await supabase
+    .from("workout_sessions")
+    .select("*")
+    .eq("id", workoutSessionId)
+    .single();
+  if (sessionError) throw sessionError;
+
+  const completedAt = new Date().toISOString();
+  const durationSeconds = session.started_at
+    ? Math.max(0, Math.floor((Date.parse(completedAt) - Date.parse(session.started_at)) / 1000))
+    : null;
+
+  let { data: metric, error: metricError } = await supabase
+    .from("body_metrics")
+    .select("weight_kg")
+    .eq("profile_id", session.profile_id)
+    .lte("date", session.workout_date)
+    .order("date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (metricError) throw metricError;
+  if (!metric) {
+    const fallback = await supabase
+      .from("body_metrics")
+      .select("weight_kg")
+      .eq("profile_id", session.profile_id)
+      .order("date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (fallback.error) throw fallback.error;
+    metric = fallback.data;
+  }
+
+  const logs = await listExerciseLogsForSessions([workoutSessionId]);
+  const sets = await listSetLogsForExerciseLogs(logs.map((log) => log.id));
+  const loadedLogIds = new Set(sets.filter((set) => set.load_kg !== null).map((set) => set.exercise_log_id));
+  const rirValues = sets.filter((set) => set.rir_done !== null).map((set) => Number(set.rir_done));
+  const caloriesEstimate = estimateCalories({
+    weightKg: metric ? Number(metric.weight_kg) : null,
+    durationSeconds,
+    exerciseCount: logs.length,
+    loadedExerciseCount: loadedLogIds.size,
+    totalSets: sets.length,
+    totalVolumeKg: sets.reduce((sum, set) => sum + (Number(set.load_kg) || 0) * (Number(set.reps_done) || 0), 0),
+    averageRir: rirValues.length ? rirValues.reduce((sum, rir) => sum + rir, 0) / rirValues.length : null,
+    cardio,
+  });
+
+  const { data, error } = await supabase
+    .from("workout_sessions")
+    .update({
+      completed_at: completedAt,
+      duration_seconds: durationSeconds,
+      calories_estimate: caloriesEstimate,
+      cardio_type: cardio?.type ?? null,
+      cardio_minutes: cardio ? Math.round(cardio.minutes) : null,
+      cardio_km: cardio?.km ?? null,
+    })
+    .eq("id", workoutSessionId)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data;
 }

@@ -15,6 +15,7 @@ const PATHS: Record<string, React.ReactNode> = {
   ),
   plus: <path d="M12 5v14M5 12h14" />,
   x: <path d="M18 6L6 18M6 6l12 12" />,
+  play: <path d="M8 5.5v13l11-6.5-11-6.5z" />,
   trash: (
     <>
       <path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
@@ -36,6 +37,12 @@ const PATHS: Record<string, React.ReactNode> = {
     </>
   ),
   download: <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />,
+  copy: (
+    <>
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M15 9V5a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2h4" />
+    </>
+  ),
   trophy: (
     <>
       <path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 01-10 0V4z" />
@@ -77,6 +84,28 @@ const PATHS: Record<string, React.ReactNode> = {
     </>
   ),
   flame: <path d="M12 2c1 3 4 4 4 8a4 4 0 01-8 0c0-1 .5-2 1-2.5C9 9 8 10 8 12a4 4 0 108 0c0-4-3-7-4-10z" />,
+  share: (
+    <>
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" />
+    </>
+  ),
+  lock: (
+    <>
+      <rect x="4" y="11" width="16" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 018 0v4" />
+    </>
+  ),
+  users: (
+    <>
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 20c.8-3.2 3.4-5 6.5-5s5.7 1.8 6.5 5" />
+      <path d="M16 4.6a3.5 3.5 0 010 6.8M17.5 15.3c2.1.6 3.5 2.1 4 4.7" />
+    </>
+  ),
+  folder: <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />,
   alert: (
     <>
       <path d="M12 9v4M12 17h.01" />

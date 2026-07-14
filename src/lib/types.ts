@@ -1,4 +1,6 @@
 // ── Estrutura do JSON de treino ─────────────────────────────────────────────
+export type CardioType = "esteira" | "bike" | "escada";
+
 export interface PlanExercise {
   exerciseId: string;
   name: string;
@@ -38,9 +40,17 @@ export interface TrainingPlanJson {
 }
 
 // ── Linhas do Supabase ──────────────────────────────────────────────────────
+export interface ProfileGroupRow {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
 export interface ProfileRow {
   id: string;
   name: string;
+  group_id?: string | null;
+  pin_hash?: string | null;
   avatar: string | null;
   created_at: string;
   updated_at: string;
@@ -71,6 +81,13 @@ export interface WorkoutSessionRow {
   session_key: string;
   workout_date: string;
   week_number: number;
+  completed_at?: string | null;
+  started_at?: string | null;
+  duration_seconds?: number | null;
+  calories_estimate?: number | null;
+  cardio_type?: CardioType | null;
+  cardio_minutes?: number | null;
+  cardio_km?: number | null;
   created_at: string;
 }
 
@@ -112,6 +129,7 @@ export interface WeeklyLoadPoint {
   date: string | null;
   loadKg: number | null;
   rir: number | null;
+  reps?: number | null;
   inherited: boolean;
 }
 

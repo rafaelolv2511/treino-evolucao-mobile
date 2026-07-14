@@ -10,6 +10,7 @@ import {
   listWorkoutSessions,
 } from "@/lib/db";
 import { HistoryBundle } from "@/lib/calc";
+import WorkoutTimerBar from "@/components/WorkoutTimerBar";
 import { ProfileRow, TrainingPlanRow } from "@/lib/types";
 import { Spinner } from "@/components/ui";
 import Icon from "@/components/Icons";
@@ -19,6 +20,8 @@ import EvolucaoView from "@/components/EvolucaoView";
 export default function ProfilePage({ params }: { params: { id: string } }) {
   const profileId = params.id;
   const [tab, setTab] = useState<"treinos" | "evolucao">("treinos");
+  // Navegação pedida pela barra do treino em andamento: abre a sessão e, opcionalmente, o passo de conclusão.
+  const [sessionNav, setSessionNav] = useState<{ key: string; seq: number; conclude: boolean } | null>(null);
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [plan, setPlan] = useState<TrainingPlanRow | null>(null);
   const [history, setHistory] = useState<HistoryBundle>({ sessions: [], logs: [], sets: [] });
@@ -31,7 +34,12 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
   const refresh = useCallback(async () => {
     try {
       // 1) Carrega o perfil primeiro. Só isso decide "encontrado ou não".
-      const p = await getProfile(profileId);
+      //    Uma tentativa extra tolera falha momentânea de rede (sinal fraco).
+      let p = await getProfile(profileId).catch(() => undefined);
+      if (p === undefined) {
+        await new Promise((r) => setTimeout(r, 600));
+        p = await getProfile(profileId);
+      }
       if (!p) {
         setNotFound(true);
         setLoading(false);
@@ -75,6 +83,15 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  const runningSession =
+    history.sessions
+      .filter((item) => item.started_at && !item.completed_at)
+      .sort((a, b) => (b.started_at! < a.started_at! ? -1 : 1))[0] ?? null;
+  const runningName = runningSession
+    ? plan?.source_json.sessions.find((item) => item.sessionKey === runningSession.session_key)?.sessionName ??
+      `Sessão ${runningSession.session_key}`
+    : null;
 
   if (loading) return <Spinner label="Abrindo perfil…" />;
   if (notFound || !profile)
@@ -126,9 +143,31 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
       {error && <p className="glass mb-4 p-3 text-sm text-red-300">{error}</p>}
 
       {tab === "treinos" ? (
-        <TreinosView profile={profile} plan={plan} history={history} onChanged={refresh} />
+        <TreinosView
+          profile={profile}
+          plan={plan}
+          history={history}
+          fullHistory={fullHistory}
+          onChanged={refresh}
+          nav={sessionNav}
+        />
       ) : (
         <EvolucaoView profile={profile} plan={plan} history={history} fullHistory={fullHistory} onChanged={refresh} />
+      )}
+
+      {runningSession && runningName && (
+        <WorkoutTimerBar
+          session={runningSession}
+          sessionName={runningName}
+          onOpen={() => {
+            setTab("treinos");
+            setSessionNav({ key: runningSession.session_key, seq: Date.now(), conclude: false });
+          }}
+          onFinish={() => {
+            setTab("treinos");
+            setSessionNav({ key: runningSession.session_key, seq: Date.now(), conclude: true });
+          }}
+        />
       )}
     </div>
   );

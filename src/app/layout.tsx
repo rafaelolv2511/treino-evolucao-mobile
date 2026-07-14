@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Treino Evolução",
-  description: "Registre cargas, acompanhe sua evolução e exporte relatórios inteligentes.",
+  title: "RTrainning",
+  description: "Registre cargas, acompanhe sua evolução e compartilhe seus treinos.",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Treino Evolução",
+    title: "RTrainning",
   },
 };
 

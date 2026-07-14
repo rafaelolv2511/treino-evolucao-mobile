@@ -11,6 +11,17 @@
   --viol: #8b7cf8;
 }
 
+.share-checker {
+  background-color: #d8dde5;
+  background-image:
+    linear-gradient(45deg, #eef1f5 25%, transparent 25%),
+    linear-gradient(-45deg, #eef1f5 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #eef1f5 75%),
+    linear-gradient(-45deg, transparent 75%, #eef1f5 75%);
+  background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+  background-size: 24px 24px;
+}
+
 html {
   -webkit-tap-highlight-color: transparent;
 }

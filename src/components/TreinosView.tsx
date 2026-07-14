@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { HistoryBundle } from "@/lib/calc";
 import { ProfileRow, TrainingPlanRow } from "@/lib/types";
 import ImportPlan from "./ImportPlan";
 import SessionView from "./SessionView";
+import { useBackClose } from "./ui";
 import PlanEditor from "./PlanEditor";
 import Icon from "./Icons";
 
@@ -12,16 +13,26 @@ export default function TreinosView({
   profile,
   plan,
   history,
+  fullHistory,
   onChanged,
+  nav,
 }: {
   profile: ProfileRow;
   plan: TrainingPlanRow | null;
   history: HistoryBundle;
+  fullHistory: HistoryBundle;
   onChanged: () => void;
+  nav?: { key: string; seq: number; conclude: boolean } | null;
 }) {
   const [importOpen, setImportOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [sessionKey, setSessionKey] = useState<string | null>(null);
+  useBackClose(sessionKey !== null, () => setSessionKey(null));
+
+  // Barra do treino em andamento pediu para abrir esta sessão (e talvez concluir).
+  useEffect(() => {
+    if (nav) setSessionKey(nav.key);
+  }, [nav]);
 
   if (!plan) {
     return (
@@ -55,8 +66,10 @@ export default function TreinosView({
         plan={plan}
         session={session}
         history={history}
+        fullHistory={fullHistory}
         onBack={() => setSessionKey(null)}
         onChanged={onChanged}
+        concludeSignal={nav && nav.conclude && nav.key === session.sessionKey ? nav.seq : null}
       />
     );
   }

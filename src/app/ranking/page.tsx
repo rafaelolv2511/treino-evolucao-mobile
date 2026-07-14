@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { listFullHistoryAllProfiles, listProfiles } from "@/lib/db";
+import { listFullHistoryAllProfiles, listGroups, listProfiles } from "@/lib/db";
 import { HistoryBundle, overallEvolutionPct, fmtPct } from "@/lib/calc";
-import { ExerciseLogRow, ProfileRow, SetLogRow, WorkoutSessionRow } from "@/lib/types";
+import { ExerciseLogRow, ProfileGroupRow, ProfileRow, SetLogRow, WorkoutSessionRow } from "@/lib/types";
 import { Spinner, TabBar } from "@/components/ui";
 import Icon from "@/components/Icons";
 
@@ -28,14 +28,17 @@ export default function RankingPage() {
   });
   const [period, setPeriod] = useState<Period>("semana");
   const [mode, setMode] = useState<Mode>("checkins");
+  const [groups, setGroups] = useState<ProfileGroupRow[]>([]);
+  const [groupFilter, setGroupFilter] = useState<string>("todos");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const [p, f] = await Promise.all([listProfiles(), listFullHistoryAllProfiles()]);
+        const [p, f, g] = await Promise.all([listProfiles(), listFullHistoryAllProfiles(), listGroups()]);
         setProfiles(p);
         setFull(f);
+        setGroups(g);
       } catch (e: any) {
         setError(e.message ?? "Falha ao carregar o ranking.");
       }
@@ -57,14 +60,19 @@ export default function RankingPage() {
   const ranking = useMemo(() => {
     if (!profiles) return [];
 
-    // Check-ins: conta sessões no período
+    // Check-ins: apenas treinos CONCLUÍDOS, no máximo 1 por dia (datas distintas)
+    const scoped = groupFilter === "todos" ? profiles : profiles.filter((p) => p.group_id === groupFilter);
     if (mode === "checkins") {
-      const counts = new Map<string, number>();
+      const daysByProfile = new Map<string, Set<string>>();
       for (const s of full.sessions) {
-        if (inPeriod(s.workout_date)) counts.set(s.profile_id, (counts.get(s.profile_id) ?? 0) + 1);
+        if (!s.completed_at) continue;
+        if (!inPeriod(s.workout_date)) continue;
+        const set = daysByProfile.get(s.profile_id) ?? new Set<string>();
+        set.add(s.workout_date);
+        daysByProfile.set(s.profile_id, set);
       }
-      return profiles
-        .map((p) => ({ profile: p, value: counts.get(p.id) ?? 0 }))
+      return scoped
+        .map((p) => ({ profile: p, value: daysByProfile.get(p.id)?.size ?? 0 }))
         .sort((a, b) => b.value - a.value || a.profile.name.localeCompare(b.profile.name));
     }
 
@@ -77,7 +85,7 @@ export default function RankingPage() {
       sessionsByProfile.set(s.profile_id, arr);
     }
 
-    return profiles
+    return scoped
       .map((p) => {
         const sessions = sessionsByProfile.get(p.id) ?? [];
         const sessionIds = new Set(sessions.map((s) => s.id));
@@ -90,7 +98,7 @@ export default function RankingPage() {
         return { profile: p, value: pct ?? -Infinity };
       })
       .sort((a, b) => b.value - a.value || a.profile.name.localeCompare(b.profile.name));
-  }, [profiles, full, mode, inPeriod]);
+  }, [profiles, full, mode, inPeriod, groupFilter]);
 
   const label = period === "semana" ? "nesta semana" : period === "mes" ? "neste mês" : "neste ano";
   const MEDAL = ["text-amber-300", "text-slate-300", "text-orange-400"];
@@ -109,7 +117,7 @@ export default function RankingPage() {
         </div>
         <p className="mt-1 text-xs text-white/55">
           {mode === "checkins"
-            ? "Check-in = um dia de treino registrado no app."
+            ? "Check-in = um dia com treino concluído (mín. 40% dos exercícios). Vale 1 por dia."
             : "Evolução = ganho médio de carga dos exercícios no período."}
         </p>
       </header>
@@ -133,6 +141,30 @@ export default function RankingPage() {
         value={period}
         onChange={setPeriod}
       />
+
+      {groups.length > 0 && (
+        <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+          <button
+            onClick={() => setGroupFilter("todos")}
+            className={`shrink-0 rounded-2xl border px-3 py-1.5 text-xs font-semibold ${
+              groupFilter === "todos" ? "border-glow/60 bg-glow/15 text-glow" : "border-white/12 bg-white/5 text-white/55"
+            }`}
+          >
+            Todos
+          </button>
+          {groups.map((g) => (
+            <button
+              key={g.id}
+              onClick={() => setGroupFilter(g.id)}
+              className={`shrink-0 rounded-2xl border px-3 py-1.5 text-xs font-semibold ${
+                groupFilter === g.id ? "border-glow/60 bg-glow/15 text-glow" : "border-white/12 bg-white/5 text-white/55"
+              }`}
+            >
+              {g.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {error && <p className="glass mt-4 p-3 text-sm text-red-300">{error}</p>}
 

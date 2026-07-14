@@ -1,7 +1,7 @@
 {
-  "name": "Treino Evolução",
-  "short_name": "Treino",
-  "description": "Registre cargas, acompanhe sua evolução e exporte relatórios inteligentes.",
+  "name": "RTrainning",
+  "short_name": "RTrainning",
+  "description": "Registre cargas, acompanhe sua evolução e compartilhe seus treinos.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#07090F",

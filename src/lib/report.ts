@@ -1,4 +1,4 @@
-import { evolutionForPlan, fmtKg, fmtPct, HistoryBundle } from "./calc";
+import { evolutionForPlan, fmtKg, fmtPct, formatDuration, HistoryBundle } from "./calc";
 import { BodyMetricRow, TrainingPlanRow } from "./types";
 
 export interface FullReport {
@@ -34,6 +34,14 @@ export function buildFullReport(
       sourceJson: plan.source_json,
     },
     bodyWeightByDate: bodyMetrics.map((b) => ({ date: b.date, weightKg: Number(b.weight_kg) })),
+    completedWorkouts: history.sessions
+      .filter((session) => session.completed_at)
+      .map((session) => ({
+        date: session.workout_date,
+        sessionKey: session.session_key,
+        durationSeconds: session.duration_seconds ?? null,
+        caloriesEstimate: session.calories_estimate ?? null,
+      })),
     overallEvolutionPct: evo.overallPct,
     evolutionByMuscleGroup: evo.groups.map((g) => ({
       muscleGroup: g.muscleGroup,
@@ -70,6 +78,15 @@ export function buildFullReport(
   md.push(`## Peso corporal por data`);
   if (bodyMetrics.length === 0) md.push("Sem registros de peso corporal.");
   else bodyMetrics.forEach((b) => md.push(`- ${b.date}: ${fmtKg(Number(b.weight_kg))}`));
+  md.push("");
+  md.push(`## Treinos concluídos`);
+  const completed = history.sessions.filter((session) => session.completed_at);
+  if (completed.length === 0) md.push("Sem treinos concluídos.");
+  else
+    completed.forEach((session) => {
+      const calories = session.calories_estimate == null ? "estimativa indisponível" : `~${Math.round(session.calories_estimate)} kcal (estimativa)`;
+      md.push(`- ${session.workout_date} · ${session.session_key}: ${formatDuration(session.duration_seconds)} · ${calories}`);
+    });
   md.push("");
   md.push(`## Evolução por grupo muscular`);
   evo.groups.forEach((g) => md.push(`- **${g.muscleGroup}:** ${fmtPct(g.evolutionPct)}`));

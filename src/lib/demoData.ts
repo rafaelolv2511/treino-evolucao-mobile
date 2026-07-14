@@ -71,8 +71,12 @@ function iso(d: Date): string {
 }
 
 export function buildDemoHistory(weeks = 8): { history: HistoryBundle; metrics: BodyMetricRow[] } {
-  const start = new Date();
-  start.setDate(start.getDate() - weeks * 7); // começa ~2 meses atrás
+  const start = new Date("2026-05-11T12:00:00");
+  let seed = 20260711;
+  const random = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
 
   const sessions: WorkoutSessionRow[] = [];
   const logs: ExerciseLogRow[] = [];
@@ -97,6 +101,10 @@ export function buildDemoHistory(weeks = 8): { history: HistoryBundle; metrics: 
         session_key: session.sessionKey,
         workout_date: date,
         week_number: w + 1,
+        started_at: `${date}T18:00:00.000Z`,
+        completed_at: `${date}T18:52:00.000Z`,
+        duration_seconds: 3120,
+        calories_estimate: 380,
         created_at: date,
       });
 
@@ -109,7 +117,7 @@ export function buildDemoHistory(weeks = 8): { history: HistoryBundle; metrics: 
           const cappedWeek = Math.min(w, 4); // trava a partir da 5ª semana (índice 4)
           load = round(cfg.base + cfg.step * cappedWeek);
         } else {
-          load = round(cfg.base + cfg.step * w + (Math.random() - 0.5));
+          load = round(cfg.base + cfg.step * w + (random() - 0.5));
         }
         const logId = `l-${w}-${ex.exerciseId}`;
         logs.push({
@@ -128,7 +136,7 @@ export function buildDemoHistory(weeks = 8): { history: HistoryBundle; metrics: 
             exercise_log_id: logId,
             set_number: s,
             load_kg: load,
-            reps_done: cfg.reps + (Math.random() > 0.6 ? 1 : 0),
+            reps_done: cfg.reps + (random() > 0.6 ? 1 : 0),
             rir_done: ex.exerciseId === "rosca_direta" && w >= 5 ? 1 : 2,
             carried_forward: false,
             created_at: date,
@@ -144,7 +152,7 @@ export function buildDemoHistory(weeks = 8): { history: HistoryBundle; metrics: 
       id: `m-${w}`,
       profile_id: profileId,
       date: iso(wd),
-      weight_kg: Number((78.5 + w * 0.18 + (Math.random() - 0.5) * 0.3).toFixed(1)),
+      weight_kg: Number((78.5 + w * 0.18 + (random() - 0.5) * 0.3).toFixed(1)),
       created_at: iso(wd),
     });
   }

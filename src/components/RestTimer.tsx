@@ -1,13 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Icon from "./Icons";
 
 export interface RestTimerHandle {
   start: (seconds: number) => void;
 }
 
-export default function RestTimer({ handleRef }: { handleRef: React.MutableRefObject<RestTimerHandle | null> }) {
+export default function RestTimer({
+  handleRef,
+  floating = false,
+}: {
+  handleRef: React.MutableRefObject<RestTimerHandle | null>;
+  floating?: boolean;
+}) {
   const [remaining, setRemaining] = useState<number | null>(null);
   const [total, setTotal] = useState(90);
   const endAt = useRef<number | null>(null);
@@ -39,8 +46,8 @@ export default function RestTimer({ handleRef }: { handleRef: React.MutableRefOb
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   const pct = remaining !== null && total > 0 ? (remaining / total) * 100 : 0;
 
-  return (
-    <div className="glass glass-strong sticky top-2 z-30 mb-4 p-3">
+  const timer = (
+    <div className={`glass glass-strong p-3 ${floating ? "shadow-2xl ring-1 ring-glow/30" : "sticky top-2 z-30 mb-4"}`}>
       {remaining === null ? (
         <div className="flex items-center gap-2">
           <span className="flex items-center gap-1.5 text-xs font-semibold text-white/60"><Icon name="timer" size={14} /> Descanso</span>
@@ -77,4 +84,16 @@ export default function RestTimer({ handleRef }: { handleRef: React.MutableRefOb
       )}
     </div>
   );
+
+  if (floating) {
+    if (remaining === null || typeof document === "undefined") return null;
+    return createPortal(
+      <div className="fixed inset-x-5 top-[calc(env(safe-area-inset-top)+5.75rem)] z-[10001]">
+        {timer}
+      </div>,
+      document.body
+    );
+  }
+
+  return timer;
 }

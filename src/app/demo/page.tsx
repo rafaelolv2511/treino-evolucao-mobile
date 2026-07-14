@@ -17,6 +17,7 @@ import { buildDemoHistory, DEMO_PLAN } from "@/lib/demoData";
 import { bestLoadOfLog, evolutionForPlan, fmtKg, fmtPct, weeklySeriesForExercise } from "@/lib/calc";
 import { Section, TabBar } from "@/components/ui";
 import Icon from "@/components/Icons";
+import ShareCard, { ShareStats } from "@/components/ShareCard";
 
 const CHART_TOOLTIP = {
   contentStyle: {
@@ -33,6 +34,7 @@ export default function DemoPage() {
   // Gera uma vez por carregamento (dados fictícios, nada é salvo)
   const { history, metrics } = useMemo(() => buildDemoHistory(8), []);
   const [granularity, setGranularity] = useState<"mes" | "ano">("mes");
+  const [showShare, setShowShare] = useState(false);
 
   const evo = useMemo(() => evolutionForPlan(DEMO_PLAN, history), [history]);
   const allExercises = useMemo(() => DEMO_PLAN.sessions.flatMap((s) => s.exercises), []);
@@ -89,6 +91,29 @@ export default function DemoPage() {
   }, [selectedExercise, history]);
 
   const bodyChart = metrics.map((m) => ({ data: m.date.slice(5), kg: Number(m.weight_kg) }));
+  const demoShareStats: ShareStats = {
+    appName: "RTrainning",
+    profileName: "Rafael Demo",
+    sessionName: "Peito e tríceps",
+    planName: DEMO_PLAN.planName,
+    dateLabel: history.sessions[history.sessions.length - 1].workout_date.split("-").reverse().join("/"),
+    exercisesDone: 6,
+    exercisesTotal: 7,
+    improved: 3,
+    prs: 2,
+    avgIncreasePct: 6.4,
+    weeklyDone: 3,
+    weeklyTarget: 5,
+    durationSeconds: 52 * 60 + 18,
+    caloriesEstimate: 386,
+    loads: [
+      { name: "Supino reto", load: 72.5 },
+      { name: "Supino inclinado", load: 28 },
+      { name: "Crossover", load: 22 },
+      { name: "Tríceps corda", load: 31 },
+      { name: "Paralelas", load: 18 },
+    ],
+  };
 
   return (
     <div className="fade-in space-y-4">
@@ -238,12 +263,25 @@ export default function DemoPage() {
         </div>
       </Section>
 
+      <Section title="Compartilhamento">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold">Story e overlay transparente</p>
+            <p className="mt-1 text-xs text-white/50">3 conceitos em cada formato, com tempo e estimativa de calorias.</p>
+          </div>
+          <button onClick={() => setShowShare(true)} className="btn btn-primary shrink-0 !px-4">
+            <Icon name="share" size={16} /> Ver
+          </button>
+        </div>
+      </Section>
+
       <Link href="/" className="btn btn-primary flex w-full items-center justify-center gap-2">
         <Icon name="dumbbell" size={17} /> Criar meu perfil e começar
       </Link>
       <p className="pb-4 text-center text-[11px] text-white/40">
         Feito com dados de exemplo. No app real, tudo isso vem dos seus próprios treinos.
       </p>
+      {showShare && <ShareCard stats={demoShareStats} onClose={() => setShowShare(false)} />}
     </div>
   );
 }

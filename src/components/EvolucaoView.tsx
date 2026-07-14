@@ -76,8 +76,8 @@ export default function EvolucaoView({
   }, [profile.id]);
 
   const evo = useMemo(
-    () => (plan ? evolutionForPlan(plan.source_json, fullHistory) : null),
-    [plan, fullHistory]
+    () => (plan ? evolutionForPlan(plan.source_json, history) : null),
+    [plan, history]
   );
 
   // Aviso gentil de estagnação: exercícios do plano atual parados há 3+ semanas.

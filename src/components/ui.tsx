@@ -1,7 +1,49 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import Icon from "./Icons";
+
+/**
+ * Integra um estado interno (sessão aberta, modo foco…) ao histórico do navegador:
+ * o gesto de voltar do celular fecha a camada atual em vez de sair do app.
+ */
+// Pilha global de camadas abertas — só a camada do topo responde ao gesto de voltar.
+const backLayers: string[] = [];
+let consumingBack = false;
+
+export function useBackClose(open: boolean, onClose: () => void) {
+  useEffect(() => {
+    if (!open) return;
+    const marker = `layer-${Date.now()}-${Math.random()}`;
+    backLayers.push(marker);
+    window.history.pushState({ layer: marker }, "");
+    const onPop = () => {
+      // back() disparado internamente para consumir estado: nenhuma camada fecha.
+      if (consumingBack) {
+        window.setTimeout(() => {
+          consumingBack = false;
+        }, 0);
+        return;
+      }
+      // Gesto real de voltar: fecha apenas a camada do topo da pilha.
+      if (backLayers[backLayers.length - 1] !== marker) return;
+      backLayers.pop();
+      onClose();
+    };
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      const index = backLayers.indexOf(marker);
+      if (index >= 0) backLayers.splice(index, 1);
+      // Fechado pela UI (não pelo gesto): consome o estado que empilhamos sem fechar as demais camadas.
+      if (window.history.state?.layer === marker) {
+        consumingBack = true;
+        window.history.back();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+}
 
 export function Modal({
   open,

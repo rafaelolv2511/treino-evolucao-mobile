@@ -42,6 +42,13 @@ create table if not exists workout_sessions (
   session_key text not null,
   workout_date date not null,
   week_number integer not null,
+  completed_at timestamptz,
+  started_at timestamptz,
+  duration_seconds integer check (duration_seconds is null or duration_seconds >= 0),
+  calories_estimate numeric check (calories_estimate is null or calories_estimate >= 0),
+  cardio_type text check (cardio_type is null or cardio_type in ('esteira', 'bike', 'escada')),
+  cardio_minutes integer check (cardio_minutes is null or cardio_minutes > 0),
+  cardio_km numeric check (cardio_km is null or cardio_km > 0),
   created_at timestamptz not null default now(),
   unique (training_plan_id, session_key, workout_date)
 );
