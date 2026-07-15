@@ -1,5 +1,17 @@
 # PROJECT_STATUS.md
 
+## Rodada 14/07/2026 (2) — lapidação de UX: barra, play, tela cheia compacta e cardio
+
+1. **Barra do treino não cobre mais nada:** espaçador de 5rem no fim da página quando há treino rodando (o botão "Concluir treino" fica acima da pílula) e a barra some automaticamente enquanto qualquer modal está aberto (novo `useOverlayOpen` em ui.tsx — o Modal registra num contador global; a barra assina via useSyncExternalStore). Visual novo: anel gradiente ciano→violeta com brilho.
+2. **Play chamativo:** o chip pequeno "Iniciar" virou um CTA de largura total com gradiente ciano→violeta, ícone de play em selo e sombra, logo abaixo da barra de progresso do dia. Some ao iniciar (o tempo assume o lugar).
+3. **Contador em destaque na tela cheia:** deixou de ser um "· 42:13" apagado na linha do músculo; agora é uma pílula própria no header (borda/glow ciano, ponto pulsante, fonte display).
+4. **Tela cheia compacta (menos rolagem interna):** descrição em 2 linhas (line-clamp), campos 62→56px, espaçamentos reduzidos, rodapé mais enxuto e anotação atrás de um toggle "+ anotação" (o campo só aparece se já houver texto ou ao tocar). Com até 4 séries o card cabe na tela sem rolagem interna, sem atrapalhar o snap.
+5. **Modal de cardio centralizado** na tela (novo prop `center` do Modal) em vez de colado embaixo.
+
+Build validado (6 rotas). Pendente: conferir no iPhone se 4 séries cabem sem rolagem no viewport real.
+
+---
+
 ## Rodada 14/07/2026 — sugestão de carga por séries + diagnóstico de deploy parcial
 
 ### Diagnóstico: produção com deploy parcial

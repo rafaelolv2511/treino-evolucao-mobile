@@ -408,16 +408,20 @@ export default function SessionView({
                         <Icon name="timer" size={11} /> {elapsedLabel}
                       </span>
                     )
-                  ) : (
-                    <button
-                      onClick={() => void playWorkout()}
-                      disabled={startingTimer}
-                      className="flex shrink-0 items-center gap-1.5 rounded-full bg-glow/15 px-3 py-1.5 text-[11px] font-bold text-glow transition active:scale-95"
-                    >
-                      <Icon name="play" size={12} /> {startingTimer ? "…" : "Iniciar"}
-                    </button>
-                  )}
+                  ) : null}
                 </div>
+                {!startedAt && !completedAt && (
+                  <button
+                    onClick={() => void playWorkout()}
+                    disabled={startingTimer}
+                    className="mb-4 flex w-full items-center justify-center gap-2.5 rounded-3xl bg-gradient-to-r from-glow to-viol px-4 py-4 font-display text-base font-bold text-ink shadow-[0_8px_28px_rgba(34,211,238,0.35)] transition active:scale-[0.98]"
+                  >
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink/20">
+                      <Icon name="play" size={15} />
+                    </span>
+                    {startingTimer ? "Iniciando…" : "Iniciar treino"}
+                  </button>
+                )}
               </>
             )}
 
@@ -687,7 +691,7 @@ function CardioModal({
   ];
 
   return (
-    <Modal open={open} onClose={onClose} title="Fez cardio hoje?">
+    <Modal open={open} onClose={onClose} title="Fez cardio hoje?" center>
       <p className="text-xs text-white/55">
         Minutos e km do cardio entram na estimativa de calorias do treino.
       </p>
@@ -861,9 +865,17 @@ function FocusMode({
             <p className="truncate text-sm font-bold">{sessionName}</p>
             <p className="truncate text-[11px] text-white/45">
               {visible === finishIndex ? "Finalizar treino" : (current?.primaryMuscleGroup ?? "")}
-              {elapsedLabel ? ` · ${elapsedLabel}` : ""}
             </p>
           </div>
+          {elapsedLabel && (
+            <span className="num flex shrink-0 items-center gap-1.5 rounded-2xl border border-glow/30 bg-glow/10 px-3 py-1.5 font-display text-sm font-bold tracking-wide text-glow shadow-[0_0_18px_rgba(34,211,238,0.25)]">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-glow opacity-60" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-glow" />
+              </span>
+              {elapsedLabel}
+            </span>
+          )}
           <span className="num shrink-0 rounded-2xl bg-white/8 px-3 py-1.5 text-sm font-bold text-glow">
             {visible === finishIndex ? "fim" : visible + 1}
             <span className="text-white/40">/{exercises.length}</span>
@@ -1023,6 +1035,7 @@ function ExerciseLogger({
   );
 
   const [notes, setNotes] = useState(existingLog?.notes ?? exercise.notes ?? "");
+  const [notesOpen, setNotesOpen] = useState(false);
   const [rows, setRows] = useState<{ load: string; reps: string; rir: string }[]>(() =>
     Array.from({ length: exercise.sets }, (_, i) => {
       const s = existingSets.find((x) => x.set_number === i + 1);
@@ -1121,10 +1134,10 @@ function ExerciseLogger({
           </div>
         </div>
 
-        {exercise.description && <p className="mt-2 text-xs italic leading-relaxed text-white/50">{exercise.description}</p>}
+        {exercise.description && <p className="mt-1.5 line-clamp-2 text-xs italic leading-snug text-white/50">{exercise.description}</p>}
 
         {/* Semanas */}
-        <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
           {pastWeeks.map((w) => (
             <div key={w.week} className={`week-pill ${w.inherited ? "inherited" : ""}`}>
               <p className="text-[10px] font-bold text-white/50">S{w.week}</p>
@@ -1140,35 +1153,35 @@ function ExerciseLogger({
           </div>
         </div>
 
-        {suggestion && <p className="mt-2.5 text-xs text-white/45">{suggestion}</p>}
+        {suggestion && <p className="mt-2 text-xs text-white/45">{suggestion}</p>}
 
         {/* Séries */}
-        <div className="mt-4">
-          <div className="mb-2 grid grid-cols-[2rem_minmax(0,1.25fr)_minmax(0,1.1fr)_minmax(0,0.9fr)] gap-2 px-1 text-[10px] font-bold uppercase tracking-wider text-white/40">
+        <div className="mt-3">
+          <div className="mb-1.5 grid grid-cols-[2rem_minmax(0,1.25fr)_minmax(0,1.1fr)_minmax(0,0.9fr)] gap-2 px-1 text-[10px] font-bold uppercase tracking-wider text-white/40">
             <span>Série</span>
             <span>Carga kg</span>
             <span>Reps</span>
             <span>RIR</span>
           </div>
           {rows.map((r, i) => (
-            <div key={i} className="mb-3 grid grid-cols-[2rem_minmax(0,1.25fr)_minmax(0,1.1fr)_minmax(0,0.9fr)] items-center gap-2">
+            <div key={i} className="mb-2 grid grid-cols-[2rem_minmax(0,1.25fr)_minmax(0,1.1fr)_minmax(0,0.9fr)] items-center gap-2">
               <span className="num text-center text-base font-semibold text-white/45">{i + 1}</span>
               <input
-                className="field-mini num !min-h-[62px] !rounded-[1.35rem] !px-2 !text-xl placeholder:text-center"
+                className="field-mini num !min-h-[56px] !rounded-[1.35rem] !px-2 !text-xl placeholder:text-center"
                 inputMode="decimal"
                 placeholder="kg"
                 value={r.load}
                 onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, load: e.target.value } : x)))}
               />
               <input
-                className="field-mini num !min-h-[62px] !rounded-[1.35rem] !px-1.5 !text-xl placeholder:text-center"
+                className="field-mini num !min-h-[56px] !rounded-[1.35rem] !px-1.5 !text-xl placeholder:text-center"
                 inputMode="numeric"
                 placeholder={exercise.reps}
                 value={r.reps}
                 onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, reps: e.target.value } : x)))}
               />
               <input
-                className="field-mini num !min-h-[62px] !rounded-[1.35rem] !px-1.5 !text-xl placeholder:text-center"
+                className="field-mini num !min-h-[56px] !rounded-[1.35rem] !px-1.5 !text-xl placeholder:text-center"
                 inputMode="numeric"
                 placeholder={String(exercise.targetRIR)}
                 value={r.rir}
@@ -1177,17 +1190,27 @@ function ExerciseLogger({
             </div>
           ))}
 
-          <input
-            className="field mt-1 !min-h-[56px] text-center text-base"
-            placeholder="Anotação do exercício (opcional)"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-          />
+          {notes || notesOpen ? (
+            <input
+              className="field mt-1 !min-h-[52px] text-center text-base"
+              placeholder="Anotação do exercício (opcional)"
+              value={notes}
+              autoFocus={notesOpen && !notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          ) : (
+            <button
+              onClick={() => setNotesOpen(true)}
+              className="mt-1 w-full rounded-2xl border border-dashed border-white/12 py-2 text-xs text-white/40 transition active:scale-[0.99]"
+            >
+              + anotação
+            </button>
+          )}
         </div>
       </div>
 
       {/* Ações fixas no rodapé do card */}
-      <div className="flex shrink-0 gap-2 border-t border-white/10 bg-black/10 p-4">
+      <div className="flex shrink-0 gap-2 border-t border-white/10 bg-black/10 p-3">
         <button onClick={onTimer} className="btn btn-ghost flex flex-1 items-center justify-center gap-1.5">
           <Icon name="timer" size={15} /> {exercise.suggestedRestSeconds}s
         </button>

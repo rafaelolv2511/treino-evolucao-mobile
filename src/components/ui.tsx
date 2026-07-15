@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useSyncExternalStore } from "react";
 import Icon from "./Icons";
 
 /**
@@ -45,20 +45,52 @@ export function useBackClose(open: boolean, onClose: () => void) {
   }, [open]);
 }
 
+// ── Sinal global de overlay aberto (modais) ────────────────────────────────
+let overlayCount = 0;
+const overlayListeners = new Set<() => void>();
+function notifyOverlay() {
+  overlayListeners.forEach((listener) => listener());
+}
+export function useOverlayOpen(): boolean {
+  return useSyncExternalStore(
+    (cb) => {
+      overlayListeners.add(cb);
+      return () => overlayListeners.delete(cb);
+    },
+    () => overlayCount > 0,
+    () => false
+  );
+}
+
 export function Modal({
   open,
   onClose,
   title,
   children,
+  center = false,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
+  center?: boolean;
 }) {
+  useEffect(() => {
+    if (!open) return;
+    overlayCount += 1;
+    notifyOverlay();
+    return () => {
+      overlayCount -= 1;
+      notifyOverlay();
+    };
+  }, [open]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center">
+    <div
+      className={`fixed inset-0 z-50 flex justify-center bg-black/60 backdrop-blur-sm sm:items-center ${
+        center ? "items-center px-4" : "items-end"
+      }`}
+    >
       <div className="glass glass-strong fade-in max-h-[88dvh] w-full max-w-md overflow-y-auto p-5">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-lg font-bold">{title}</h2>

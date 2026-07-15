@@ -155,6 +155,8 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
         <EvolucaoView profile={profile} plan={plan} history={history} fullHistory={fullHistory} onChanged={refresh} />
       )}
 
+      {runningSession && <div className="h-20" aria-hidden="true" />}
+
       {runningSession && runningName && (
         <WorkoutTimerBar
           session={runningSession}
