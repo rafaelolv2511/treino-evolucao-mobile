@@ -12,11 +12,12 @@ import {
   listGroups,
   listProfiles,
   MAX_PROFILES,
-  setProfileGroup,
+  setProfileGroups,
   setProfilePin,
   updateProfileAvatar,
 } from "@/lib/db";
 import { ProfileGroupRow, ProfileRow } from "@/lib/types";
+import { groupIdsForProfile, profileIsInGroup } from "@/lib/groups";
 import { Modal, Spinner } from "@/components/ui";
 import Icon from "@/components/Icons";
 import Brand from "@/components/Brand";
@@ -46,6 +47,43 @@ async function fileToAvatar(file: File, size = 160): Promise<string> {
   return canvas.toDataURL("image/jpeg", 0.82);
 }
 
+function GroupPicker({
+  groups,
+  selected,
+  onChange,
+}: {
+  groups: ProfileGroupRow[];
+  selected: string[];
+  onChange: (groupIds: string[]) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      {groups.map((group) => {
+        const checked = selected.includes(group.id);
+        return (
+          <label
+            key={group.id}
+            className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition ${
+              checked ? "border-aqua/60 bg-aqua/10 text-giz" : "border-iron bg-[#141414] text-muted"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={checked}
+              onChange={() =>
+                onChange(checked ? selected.filter((id) => id !== group.id) : [...selected, group.id])
+              }
+              className="h-4 w-4 accent-[#44E2D9]"
+            />
+            <span className="text-sm font-semibold">{group.name}</span>
+          </label>
+        );
+      })}
+      <p className="text-[11px] text-faded">Nenhum selecionado deixa o perfil sem grupo.</p>
+    </div>
+  );
+}
+
 export default function HomePage() {
   const router = useRouter();
   const [profiles, setProfiles] = useState<ProfileRow[] | null>(null);
@@ -55,7 +93,7 @@ export default function HomePage() {
 
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
-  const [newGroupId, setNewGroupId] = useState<string>("");
+  const [newGroupIds, setNewGroupIds] = useState<string[]>([]);
   const [newPin, setNewPin] = useState("");
 
   const [creatingGroup, setCreatingGroup] = useState(false);
@@ -63,7 +101,7 @@ export default function HomePage() {
 
   const [removing, setRemoving] = useState<ProfileRow | null>(null);
   const [configFor, setConfigFor] = useState<ProfileRow | null>(null);
-  const [cfgGroupId, setCfgGroupId] = useState<string>("");
+  const [cfgGroupIds, setCfgGroupIds] = useState<string[]>([]);
   const [cfgPin, setCfgPin] = useState("");
 
   const [pinFor, setPinFor] = useState<ProfileRow | null>(null);
@@ -92,12 +130,12 @@ export default function HomePage() {
     setError(null);
     try {
       const p = await createProfile(newName);
-      if (newGroupId) await setProfileGroup(p.id, newGroupId);
+      if (newGroupIds.length > 0) await setProfileGroups(p.id, newGroupIds);
       if (newPin.trim()) await setProfilePin(p.id, newPin);
       setCreating(false);
       setNewName("");
       setNewPin("");
-      setNewGroupId("");
+      setNewGroupIds([]);
       router.push(`/p/${p.id}`);
     } catch (e: any) {
       setError(e.message ?? "Não foi possível criar o perfil.");
@@ -139,7 +177,7 @@ export default function HomePage() {
     if (!configFor) return;
     setBusy(true);
     try {
-      await setProfileGroup(configFor.id, cfgGroupId || null);
+      await setProfileGroups(configFor.id, cfgGroupIds);
       if (cfgPin.trim()) await setProfilePin(configFor.id, cfgPin);
       setConfigFor(null);
       setCfgPin("");
@@ -238,7 +276,7 @@ export default function HomePage() {
           <button
             onClick={() => {
               setConfigFor(p);
-              setCfgGroupId(p.group_id ?? "");
+              setCfgGroupIds(groupIdsForProfile(p));
               setCfgPin("");
             }}
             aria-label={`Configurar perfil ${p.name}`}
@@ -258,8 +296,8 @@ export default function HomePage() {
     );
   }
 
-  const ungrouped = (profiles ?? []).filter((p) => !p.group_id);
-  const groupOf = (gid: string) => (profiles ?? []).filter((p) => p.group_id === gid);
+  const ungrouped = (profiles ?? []).filter((p) => groupIdsForProfile(p).length === 0);
+  const groupOf = (gid: string) => (profiles ?? []).filter((p) => profileIsInGroup(p, gid));
 
   return (
     <div className="fade-in">
@@ -378,17 +416,8 @@ export default function HomePage() {
         />
         {groups.length > 0 && (
           <>
-            <label className="mb-1 mt-3 block text-sm text-white/70">Grupo (opcional)</label>
-            <select className="field" value={newGroupId} onChange={(e) => setNewGroupId(e.target.value)}>
-              <option value="" className="bg-ink">
-                Sem grupo
-              </option>
-              {groups.map((g) => (
-                <option key={g.id} value={g.id} className="bg-ink">
-                  {g.name}
-                </option>
-              ))}
-            </select>
+            <label className="mb-2 mt-3 block text-sm text-white/70">Grupos (opcional)</label>
+            <GroupPicker groups={groups} selected={newGroupIds} onChange={setNewGroupIds} />
           </>
         )}
         <label className="mb-1 mt-3 block text-sm text-white/70">Senha (opcional, 4-6 dígitos)</label>
@@ -420,17 +449,8 @@ export default function HomePage() {
       </Modal>
 
       <Modal open={!!configFor} onClose={() => setConfigFor(null)} title={`Configurar — ${configFor?.name ?? ""}`}>
-        <label className="mb-1 block text-sm text-white/70">Grupo</label>
-        <select className="field" value={cfgGroupId} onChange={(e) => setCfgGroupId(e.target.value)}>
-          <option value="" className="bg-ink">
-            Sem grupo
-          </option>
-          {groups.map((g) => (
-            <option key={g.id} value={g.id} className="bg-ink">
-              {g.name}
-            </option>
-          ))}
-        </select>
+        <label className="mb-2 block text-sm text-white/70">Grupos</label>
+        <GroupPicker groups={groups} selected={cfgGroupIds} onChange={setCfgGroupIds} />
         <label className="mb-1 mt-3 block text-sm text-white/70">
           {configFor?.pin_hash ? "Nova senha (deixe vazio para manter a atual)" : "Senha (opcional, 4-6 dígitos)"}
         </label>

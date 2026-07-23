@@ -5,6 +5,7 @@ import Link from "next/link";
 import { listFullHistoryAllProfiles, listGroups, listProfiles } from "@/lib/db";
 import { HistoryBundle, evolutionPctInPeriod, fmtPct } from "@/lib/calc";
 import { ExerciseLogRow, ProfileGroupRow, ProfileRow, SetLogRow, WorkoutSessionRow } from "@/lib/types";
+import { profileIsInGroup } from "@/lib/groups";
 import { Spinner, TabBar } from "@/components/ui";
 import Icon from "@/components/Icons";
 
@@ -61,7 +62,7 @@ export default function RankingPage() {
     if (!profiles) return [];
 
     // Check-ins: apenas treinos CONCLUÍDOS, no máximo 1 por dia (datas distintas)
-    const scoped = groupFilter === "todos" ? profiles : profiles.filter((p) => p.group_id === groupFilter);
+    const scoped = groupFilter === "todos" ? profiles : profiles.filter((p) => profileIsInGroup(p, groupFilter));
     if (mode === "checkins") {
       const daysByProfile = new Map<string, Set<string>>();
       for (const s of full.sessions) {

@@ -46,10 +46,17 @@ export interface ProfileGroupRow {
   created_at: string;
 }
 
+export interface ProfileGroupMembershipRow {
+  profile_id: string;
+  group_id: string;
+  created_at: string;
+}
+
 export interface ProfileRow {
   id: string;
   name: string;
   group_id?: string | null;
+  group_ids?: string[];
   pin_hash?: string | null;
   avatar: string | null;
   created_at: string;

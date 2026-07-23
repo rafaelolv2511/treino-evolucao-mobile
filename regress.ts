@@ -3,6 +3,7 @@ import {
   evolutionPctInPeriod, stagnantExercises, suggestLoad, estimateCalories,
   calendarWeekSummary, evolutionForPlan, HistoryBundle,
 } from "./src/lib/calc";
+import { groupIdsForProfile, normalizeGroupIds, profileIsInGroup } from "./src/lib/groups";
 
 
 let ok = 0, fail = 0;
@@ -109,6 +110,14 @@ const planoEv: any = { planName:"P", sessions:[{sessionKey:"A",sessionName:"A",e
   {exerciseId:"supino",name:"Supino",primaryMuscleGroup:"Peito",sets:3,reps:"8-12",targetRIR:2,suggestedRestSeconds:90}],mobility:[]}] };
 const evp = evolutionForPlan(planoEv, herda);
 t("evolução do plano ainda funciona", evp.overallPct !== null && Math.round(evp.overallPct!) === 10);
+
+console.log("\n10) PERFIL EM MULTIPLOS GRUPOS");
+const multi = { group_id: "legado", group_ids: ["amigos", "trabalho"] };
+t("participa do primeiro grupo", profileIsInGroup(multi, "amigos"));
+t("participa tambem do segundo grupo", profileIsInGroup(multi, "trabalho"));
+t("nao participa de grupo nao selecionado", !profileIsInGroup(multi, "familia"));
+t("remove IDs duplicados", normalizeGroupIds(["amigos", "amigos", "trabalho"]).length === 2);
+t("aceita group_id antigo durante a migracao", groupIdsForProfile({ group_id: "legado" })[0] === "legado");
 
 console.log(`\n=== ${ok} passaram, ${fail} falharam ===`);
 process.exit(fail ? 1 : 0);

@@ -3,6 +3,7 @@ import { CardioInput, estimateCalories } from "./calc";
 import {
   BodyMetricRow,
   ProfileGroupRow,
+  ProfileGroupMembershipRow,
   ExerciseLogRow,
   ProfileNoteRow,
   ProfileRow,
@@ -11,6 +12,7 @@ import {
   TrainingPlanRow,
   WorkoutSessionRow,
 } from "./types";
+import { normalizeGroupIds } from "./groups";
 
 export const MAX_PROFILES = 8;
 
@@ -18,7 +20,26 @@ export const MAX_PROFILES = 8;
 export async function listProfiles(): Promise<ProfileRow[]> {
   const { data, error } = await supabase.from("profiles").select("*").order("created_at");
   if (error) throw error;
-  return data ?? [];
+  const profiles: ProfileRow[] = data ?? [];
+  if (profiles.length === 0) return profiles;
+
+  const { data: membershipData, error: membershipError } = await supabase
+    .from("profile_group_memberships")
+    .select("profile_id,group_id,created_at");
+  if (membershipError) throw membershipError;
+
+  const memberships = (membershipData ?? []) as ProfileGroupMembershipRow[];
+  const groupsByProfile = new Map<string, string[]>();
+  for (const membership of memberships) {
+    const ids = groupsByProfile.get(membership.profile_id) ?? [];
+    ids.push(membership.group_id);
+    groupsByProfile.set(membership.profile_id, ids);
+  }
+
+  return profiles.map((profile) => ({
+    ...profile,
+    group_ids: normalizeGroupIds(groupsByProfile.get(profile.id) ?? (profile.group_id ? [profile.group_id] : [])),
+  }));
 }
 
 export async function createProfile(name: string): Promise<ProfileRow> {
@@ -394,15 +415,43 @@ export async function createGroup(name: string): Promise<ProfileGroupRow> {
 }
 
 export async function deleteGroup(groupId: string): Promise<void> {
-  // perfis do grupo voltam para "sem grupo" (on delete set null)
+  // Os vínculos são removidos em cascata; os perfis e outros grupos permanecem.
   const { error } = await supabase.from("profile_groups").delete().eq("id", groupId);
   if (error) throw error;
 }
 
-export async function setProfileGroup(profileId: string, groupId: string | null): Promise<void> {
+export async function setProfileGroups(profileId: string, groupIds: string[]): Promise<void> {
+  const desired = normalizeGroupIds(groupIds);
+  const { data, error: readError } = await supabase
+    .from("profile_group_memberships")
+    .select("group_id")
+    .eq("profile_id", profileId);
+  if (readError) throw readError;
+
+  const existing = new Set((data ?? []).map((row: { group_id: string }) => row.group_id));
+  const toAdd = desired.filter((groupId) => !existing.has(groupId));
+  const toRemove = [...existing].filter((groupId) => !desired.includes(groupId));
+
+  if (toAdd.length > 0) {
+    const { error } = await supabase
+      .from("profile_group_memberships")
+      .insert(toAdd.map((groupId) => ({ profile_id: profileId, group_id: groupId })));
+    if (error) throw error;
+  }
+
+  if (toRemove.length > 0) {
+    const { error } = await supabase
+      .from("profile_group_memberships")
+      .delete()
+      .eq("profile_id", profileId)
+      .in("group_id", toRemove);
+    if (error) throw error;
+  }
+
+  // Mantém a primeira seleção na coluna antiga para compatibilidade com versões anteriores.
   const { error } = await supabase
     .from("profiles")
-    .update({ group_id: groupId, updated_at: new Date().toISOString() })
+    .update({ group_id: desired[0] ?? null, updated_at: new Date().toISOString() })
     .eq("id", profileId);
   if (error) throw error;
 }

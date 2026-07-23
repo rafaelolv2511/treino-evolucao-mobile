@@ -204,13 +204,13 @@ Implementado e testado (build ok, 6 rotas):
 3. **Progresso do dia:** barra fina e discreta acima da lista com "X/Y · N%".
 4. **Conclusão com regra:** "Concluir treino" só registra o check-in com ≥40% dos exercícios preenchidos (aviso gentil se faltar); grava `completed_at` na sessão.
 5. **Ranking:** check-in agora = dia com treino concluído (máx. 1/dia, datas distintas); filtro por grupo (chips "Todos" + grupos) nas duas abas.
-6. **Grupos de perfis:** criar grupos na home (trabalho, amigos…), perfis organizados por seção; mover perfil de grupo no lápis do card; grupo vazio pode ser removido.
+6. **Grupos de perfis:** criar grupos na home (trabalho, amigos…), perfis organizados por seção; um perfil pode participar de vários grupos ao mesmo tempo, escolhidos por checkboxes no lápis do card; grupo vazio pode ser removido.
 7. **Senha (PIN) opcional por perfil:** 4-6 dígitos, definida na criação ou no lápis; pedida ao abrir o perfil (hash SHA-256, sem texto puro no banco); cadeado no card.
 8. **Edição rápida do exercício:** além de nome/descrição, agora edita a quantidade de séries (stepper −/+).
 9. **Sugestão de carga com repetições:** considera RIR e reps vs faixa alvo (teto da faixa → subir; abaixo do piso → reduzir; testado).
 10. **Compartilhamento "instagramável":** ao concluir, o botão Compartilhar abre as abas Instagram e PNG transparente, com 3 conceitos modernos em cada formato, todos em 1080×1920. Stories podem ser compartilhados/salvos; overlays transparentes podem ser copiados/salvos.
 
-Banco: migration `rtrainning_grupos_pin_conclusao` aplicada (completed_at, profile_groups, group_id, pin_hash).
+Banco: migrations `rtrainning_grupos_pin_conclusao` (completed_at, profile_groups, group_id, pin_hash) e `20260723032929_allow_profiles_in_multiple_groups` aplicadas. A tabela `profile_group_memberships` mantém a relação muitos-para-muitos; `profiles.group_id` permanece sincronizado com o primeiro grupo para compatibilidade com versões anteriores.
 
 Arquivos alterados: `src/lib/{calc,db,types}.ts`, `src/components/{SessionView,ShareCard,Icons}.tsx`, `src/app/{page,layout}.tsx`, `src/app/ranking/page.tsx`, `public/{icon.svg,icon-*.png,apple-touch-icon.png,favicon-32.png,manifest.webmanifest}`.
 
