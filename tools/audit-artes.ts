@@ -315,39 +315,35 @@ const fmtHoras = (h: number) => {
 const pctLabel = (v: number | null) => (v == null ? "—" : `${v >= 0 ? "+" : ""}${Math.round(v)}%`);
 
 // ── DIA ────────────────────────────────────────────────────────────────────
-/** Overlay · grid + assinatura de volume — bloco compacto, 3 colunas × 2 linhas. */
+/** Overlay · resumo compacto em 3 colunas × 2 linhas. */
 const dayGrid: Art["draw"] = (ctx, s, logo) => {
-  const x = PAD;
-  const w = W - PAD * 2;
+  const x = 36;
+  const w = W - x * 2;
   const col = w / 3;
-  const alturaBloco = s.day?.splitMuscular.length ? 430 : 340;
-  const top = H - PAD - alturaBloco + 46;
-  overlayScrim(ctx, x, top - 46, w, alturaBloco);
+  const alturaBloco = 322;
+  const top = H - PAD - alturaBloco;
+  overlayScrim(ctx, x, top, w, alturaBloco);
   shadowOn(ctx);
-  brandInline(ctx, x, top - 14, logo, 26);
-  const l1 = top + 78;
+  brandInline(ctx, x, top + 28, logo, 24);
+  const l1 = top + 92;
   label(ctx, "Treino", x, l1, 18);
   label(ctx, "Duração", x + col, l1, 18);
   label(ctx, "Calorias", x + col * 2, l1, 18);
-  ctx.font = STAT(66);
+  ctx.font = STAT(62);
   ctx.fillStyle = GIZ;
   [s.sessionName, dur(s), kcalOf(s)].forEach((v, i) => {
-    let size = 66;
+    let size = 62;
     ctx.font = STAT(size);
-    while (size > 26 && ctx.measureText(v).width > col - 26) { size -= 3; ctx.font = STAT(size); }
-    ctx.fillText(v, x + col * i, l1 + 62);
+    while (size > 26 && ctx.measureText(v).width > col - 18) { size -= 3; ctx.font = STAT(size); }
+    ctx.fillText(v, x + col * i, l1 + 55);
   });
-  const l2 = l1 + 150;
+  const l2 = l1 + 125;
   label(ctx, "Volume", x, l2, 18);
   label(ctx, "Séries", x + col, l2, 18);
   label(ctx, "PRs", x + col * 2, l2, 18);
-  stat(ctx, volOf(s), "", x, l2 + 62, 66, false, col - 26);
-  stat(ctx, String(s.day?.series ?? 0), "", x + col, l2 + 62, 66, false, col - 26);
-  stat(ctx, String(s.prs), "", x + col * 2, l2 + 62, 66, true, col - 26);
-  if (s.day?.splitMuscular.length) {
-    splitBar(ctx, s.day.splitMuscular, x, l2 + 108, w, 12);
-    splitInline(ctx, s.day.splitMuscular, x, l2 + 158, 20);
-  }
+  stat(ctx, volOf(s), "", x, l2 + 55, 62, false, col - 18);
+  stat(ctx, String(s.day?.series ?? 0), "", x + col, l2 + 55, 62, false, col - 18);
+  stat(ctx, String(s.prs), "", x + col * 2, l2 + 55, 62, true, col - 18);
   shadowOff(ctx);
 };
 
@@ -946,7 +942,7 @@ const monthRecap: Art["draw"] = (ctx, s, logo) => {
 };
 
 const ARTS: Art[] = [
-  { key: "dia-grid", label: "Grid + volume", period: "dia", kind: "overlay", draw: dayGrid },
+  { key: "dia-grid", label: "Resumo compacto", period: "dia", kind: "overlay", draw: dayGrid },
   { key: "dia-circuito", label: "Circuito do treino", period: "dia", kind: "overlay", draw: dayCircuit },
   { key: "dia-limpo", label: "Stats limpos", period: "dia", kind: "overlay", draw: dayClean },
   { key: "dia-card", label: "Treino concluído", period: "dia", kind: "card", draw: dayCard },
