@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { DayAggregate, MonthAggregate, WeekAggregate, fmtCompact, formatDuration } from "@/lib/calc";
+import { DayAggregate, MonthAggregate, WeekAggregate, fmtCompact } from "@/lib/calc";
 import Icon from "./Icons";
 
 export interface ShareStats {
@@ -143,10 +143,34 @@ function statBlock(
   ctx.fillStyle = accent ? AQUA : GIZ;
   ctx.fillText(value, x, y);
   shadowOff(ctx);
-  ctx.font = TEXT(Math.max(18, size * 0.22), 700);
+  const labelSize = Math.max(18, size * 0.22);
+  ctx.font = TEXT(labelSize, 700);
   ctx.fillStyle = FADED;
-  ctx.fillText(lbl.toUpperCase().split("").join("\u2009"), x, y + size * 0.34);
+  ctx.fillText(lbl.toUpperCase().split("").join("\u2009"), x, y + size * 0.55);
   ctx.textAlign = "left";
+}
+
+/** Métrica compacta do primeiro overlay: rótulo acima, valor abaixo. */
+function gridStat(
+  ctx: CanvasRenderingContext2D,
+  value: string,
+  lbl: string,
+  x: number,
+  y: number,
+  accent = false,
+  maxWidth = 300
+) {
+  label(ctx, lbl, x, y, 21, GIZ);
+  shadowOn(ctx);
+  let valueSize = 72;
+  ctx.font = STAT(valueSize);
+  while (valueSize > 48 && ctx.measureText(value).width > maxWidth) {
+    valueSize -= 2;
+    ctx.font = STAT(valueSize);
+  }
+  ctx.fillStyle = accent ? AQUA : GIZ;
+  ctx.fillText(value, x, y + 78);
+  shadowOff(ctx);
 }
 
 /** Barra de divisão de volume — a assinatura visual (substitui o percurso). */
@@ -257,7 +281,13 @@ function bracket(ctx: CanvasRenderingContext2D, text: string, x: number, y: numb
 }
 
 // ── Dados derivados ────────────────────────────────────────────────────────
-const dur = (s: ShareStats) => (s.durationSeconds != null ? formatDuration(s.durationSeconds) : "—");
+const dur = (s: ShareStats) => {
+  if (s.durationSeconds == null) return "—";
+  const totalMinutes = Math.floor(s.durationSeconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return hours > 0 ? `${hours}h${String(minutes).padStart(2, "0")}` : `${minutes}min`;
+};
 const kcal = (s: ShareStats) => (s.caloriesEstimate != null ? String(Math.round(s.caloriesEstimate)) : "—");
 const vol = (s: ShareStats) => (s.day ? fmtCompact(s.day.volumeKg) : "—");
 /** 4.9 horas decimais → "4h54" (e não "4h9"). */
@@ -269,32 +299,16 @@ const fmtHoras = (h: number) => {
 
 // ── ARTES · DIA ────────────────────────────────────────────────────────────
 const dayGrid: Art["draw"] = (ctx, s, logo) => {
-  const top = H - 720;
+  const top = H - 620;
   drawBrand(ctx, PAD, top, logo);
-  label(ctx, "Treino", PAD, top + 90);
-  shadowOn(ctx);
-  ctx.font = STAT(84);
-  ctx.fillStyle = GIZ;
-  ctx.fillText(s.workoutTitle, PAD, top + 170);
-  shadowOff(ctx);
-
-  const col = (W - PAD * 2) / 2;
-  statBlock(ctx, dur(s), "Duração", PAD, top + 320, 88);
-  statBlock(ctx, kcal(s), "Calorias", PAD + col, top + 320, 88);
-  statBlock(ctx, vol(s), "Volume", PAD, top + 470, 88, true);
-  statBlock(ctx, String(s.day?.series ?? 0), "Séries", PAD + col, top + 470, 88);
-
-  if (s.day?.splitMuscular.length) {
-    splitBar(ctx, s.day.splitMuscular, PAD, top + 540, W - PAD * 2, 18);
-    ctx.font = TEXT(24, 500);
-    ctx.fillStyle = MUTED;
-    ctx.fillText(s.day.splitMuscular.map((p) => `${p.grupo} ${p.pct}%`).join("   ·   "), PAD, top + 600);
-  }
-  if (s.prs > 0) {
-    ctx.font = TEXT(28, 700);
-    ctx.fillStyle = AQUA;
-    ctx.fillText(`${s.prs} PR ${s.prs > 1 ? "batidos" : "batido"}`, PAD, top + 660);
-  }
+  const col = (W - PAD * 2) / 3;
+  const cellWidth = col - 24;
+  gridStat(ctx, s.workoutTitle, "Treino", PAD, top + 110, false, cellWidth);
+  gridStat(ctx, dur(s), "Duração", PAD + col, top + 110, false, cellWidth);
+  gridStat(ctx, kcal(s), "Calorias", PAD + col * 2, top + 110, false, cellWidth);
+  gridStat(ctx, vol(s), "Volume", PAD, top + 290, false, cellWidth);
+  gridStat(ctx, String(s.day?.series ?? 0), "Séries", PAD + col, top + 290, false, cellWidth);
+  gridStat(ctx, String(s.prs), "PRs", PAD + col * 2, top + 290, s.prs > 0, cellWidth);
 };
 
 const dayCircuit: Art["draw"] = (ctx, s, logo) => {

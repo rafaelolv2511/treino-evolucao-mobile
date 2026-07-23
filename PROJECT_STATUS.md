@@ -212,6 +212,7 @@ Implementado e testado (build ok, 6 rotas):
 11. **Recompartilhar depois:** toda sessão com `completed_at` mostra "Compartilhar novamente" abaixo do estado "Treino concluído", inclusive após fechar a tela ou reabrir o treino em outra data.
 12. **Títulos sociais:** as cinco artes de Dia usam nomes Instagramáveis derivados do foco e dos grupos musculares (`Back day`, `Chest day`, `Leg day`, `Shoulder day`, `Arm day`, `Core day`, entre outros).
 13. **Prévia do overlay:** o PNG continua transparente e copiável, mas a galeria usa um fundo Carbon sólido, sem xadrez, com selo "Copiável" e aviso de que o fundo visual não é exportado.
+14. **Correção do PNG copiável:** rótulos de métricas ganharam folga segura abaixo dos números; o primeiro overlay voltou ao grid 3×2 (treino, duração, calorias, volume, séries e PRs), sem barra percentual.
 
 Banco: migrations `rtrainning_grupos_pin_conclusao` (completed_at, profile_groups, group_id, pin_hash) e `20260723032929_allow_profiles_in_multiple_groups` aplicadas. A tabela `profile_group_memberships` mantém a relação muitos-para-muitos; `profiles.group_id` permanece sincronizado com o primeiro grupo para compatibilidade com versões anteriores.
 
