@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { DayAggregate, MonthAggregate, WeekAggregate, fmtCompact, formatDuration } from "@/lib/calc";
 import Icon from "./Icons";
 
@@ -917,7 +918,7 @@ export default function ShareCard({ stats, onClose }: { stats: ShareStats; onClo
 
   const current = arts[active];
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex flex-col bg-ink">
       <div className="flex items-center justify-between px-5 pb-2 pt-5">
         <div>
@@ -948,13 +949,13 @@ export default function ShareCard({ stats, onClose }: { stats: ShareStats; onClo
       <div
         ref={trackRef}
         onScroll={handleScroll}
-        className="mt-4 flex flex-1 snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden px-5 pb-2"
+        className="mt-4 flex min-h-0 flex-1 snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden px-5 pb-2"
         style={{ scrollbarWidth: "none" }}
       >
         {arts.map((art, i) => (
-          <div key={art.key} className="flex w-[78%] shrink-0 snap-center flex-col">
+          <div key={art.key} className="flex min-h-0 w-[78%] shrink-0 snap-center flex-col">
             <div
-              className={`relative flex-1 overflow-hidden rounded-3xl border ${
+              className={`relative min-h-0 flex-1 overflow-hidden rounded-3xl border ${
                 art.kind === "overlay" ? "share-checker border-iron" : "border-line bg-deep"
               }`}
             >
@@ -962,7 +963,7 @@ export default function ShareCard({ stats, onClose }: { stats: ShareStats; onClo
                 ref={(el) => {
                   previewRefs.current[i] = el;
                 }}
-                className="h-full w-full object-contain"
+                className="absolute inset-0 h-full w-full object-contain"
               />
             </div>
             <p className="mt-2 truncate text-center text-xs text-muted">
@@ -1004,6 +1005,7 @@ export default function ShareCard({ stats, onClose }: { stats: ShareStats; onClo
             : "Imagem completa 1080×1920 para a Story."}
         </p>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
