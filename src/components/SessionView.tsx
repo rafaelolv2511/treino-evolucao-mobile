@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import {
   CardioInput,
   HistoryBundle,
+  bodyWeightMonth,
   dayAggregate,
   monthAggregate,
   weekAggregate,
@@ -21,7 +22,9 @@ import {
 import {
   deleteWorkoutSession,
   getOrCreateWorkoutSession,
+  listBodyMetrics,
   markSessionCompleted,
+  saveCardio,
   startWorkoutTimer,
   saveExerciseLog,
   updatePlanJson,
@@ -41,6 +44,7 @@ import RestTimer, { RestTimerHandle } from "./RestTimer";
 import { Modal, TabBar, useBackClose } from "./ui";
 import Icon from "./Icons";
 import ShareCard, { ShareStats } from "./ShareCard";
+import CardioModal from "./CardioModal";
 
 function todayISO() {
   const d = new Date();
@@ -81,6 +85,8 @@ export default function SessionView({
   const [concluding, setConcluding] = useState(false);
   const [concludeHint, setConcludeHint] = useState(false);
   const [cardioOpen, setCardioOpen] = useState(false);
+  const [savingCardio, setSavingCardio] = useState(false);
+  const [bodyMetrics, setBodyMetrics] = useState<{ date: string; weight_kg: number }[]>([]);
   const [startingTimer, setStartingTimer] = useState(false);
   const timerRef = useRef<RestTimerHandle | null>(null);
   const [clockNow, setClockNow] = useState(() => Date.now());
@@ -222,7 +228,7 @@ export default function SessionView({
       setTimeout(() => setConcludeHint(false), 3500);
       return false;
     }
-    setCardioOpen(true);
+    void concludeWorkout(loggedOverride, cardioAtual);
     return true;
   }
 
@@ -287,6 +293,27 @@ export default function SessionView({
 
   const flatExercises = session.exercises;
 
+  useEffect(() => {
+    let alive = true;
+    listBodyMetrics(profile.id)
+      .then((rows) => {
+        if (alive) setBodyMetrics(rows.map((row) => ({ date: row.date, weight_kg: row.weight_kg })));
+      })
+      .catch(() => null);
+    return () => {
+      alive = false;
+    };
+  }, [profile.id]);
+
+  const cardioAtual: CardioInput | null =
+    workoutSession?.cardio_type && workoutSession?.cardio_minutes
+      ? {
+          type: workoutSession.cardio_type,
+          minutes: workoutSession.cardio_minutes,
+          km: workoutSession.cardio_km ?? null,
+        }
+      : null;
+
   const todayForShare = workoutSession?.workout_date ?? date;
   const weakAggregateSafe = useMemo(
     () => weekAggregate(fullHistory, todayForShare, summary.prs),
@@ -295,6 +322,10 @@ export default function SessionView({
   const monthAggregateSafe = useMemo(
     () => monthAggregate(fullHistory, todayForShare, weakAggregateSafe.streakSemanas),
     [fullHistory, todayForShare, weakAggregateSafe.streakSemanas]
+  );
+  const bodyWeightSafe = useMemo(
+    () => bodyWeightMonth(bodyMetrics, todayForShare),
+    [bodyMetrics, todayForShare]
   );
 
   const shareStats: ShareStats = {
@@ -322,6 +353,7 @@ export default function SessionView({
     day: workoutSession ? dayAggregate(history, workoutSession.id) : undefined,
     week: weakAggregateSafe,
     month: monthAggregateSafe,
+    bodyWeight: bodyWeightSafe,
   };
 
   function isDone(ex: PlanExercise): boolean {
@@ -521,10 +553,35 @@ export default function SessionView({
 
             {workoutSession && (
               <>
+                {!isCompleted && (
+                  <button
+                    onClick={() => setCardioOpen(true)}
+                    className="mt-5 flex w-full items-center justify-between rounded-2xl border border-iron bg-[#141414] px-4 py-3.5 transition active:scale-[0.99]"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Icon name="timer" size={16} />
+                      <span className="text-sm font-semibold text-giz">
+                        {cardioAtual ? "Cardio registrado" : "Fez cardio?"}
+                      </span>
+                    </span>
+                    <span className="flex items-center gap-2">
+                      {cardioAtual ? (
+                        <span className="num text-xs font-bold text-aqua">
+                          {cardioAtual.type === "esteira" ? "Esteira" : cardioAtual.type === "bike" ? "Bike" : "Escada"} ·{" "}
+                          {Math.round(cardioAtual.minutes)} min
+                          {cardioAtual.km != null ? ` · ${cardioAtual.km} km` : ""}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-faded">adicionar</span>
+                      )}
+                      <Icon name="chevronRight" size={14} />
+                    </span>
+                  </button>
+                )}
                 <button
                   onClick={() => requestConclude()}
                   disabled={concluding || isCompleted}
-                  className={`btn mt-5 flex w-full items-center justify-center gap-2 ${
+                  className={`btn ${isCompleted ? "mt-5" : "mt-2.5"} flex w-full items-center justify-center gap-2 ${
                     isCompleted ? "btn-ghost border-aqua/30 text-aqua" : canConclude ? "btn-primary" : "btn-ghost"
                   }`}
                 >
@@ -579,6 +636,11 @@ export default function SessionView({
           elapsedLabel={elapsedLabel}
           progress={{ logged: summary.logged, total: summary.total }}
           doneIds={new Set(flatExercises.filter(isDone).map((e) => e.exerciseId))}
+          cardio={cardioAtual}
+          onCardio={() => {
+            setFocusIndex(null);
+            setCardioOpen(true);
+          }}
           concluding={concluding}
           onConclude={async (logged) => {
             const ok = requestConclude(logged);
@@ -607,11 +669,29 @@ export default function SessionView({
 
       <CardioModal
         open={cardioOpen}
-        concluding={concluding}
+        saving={savingCardio}
+        initial={cardioAtual}
         onClose={() => setCardioOpen(false)}
-        onConfirm={async (cardio) => {
-          const ok = await concludeWorkout(summary.logged, cardio);
-          if (ok) setCardioOpen(false);
+        onSave={async (cardio) => {
+          if (!workoutSession) return;
+          setSavingCardio(true);
+          try {
+            await saveCardio(workoutSession.id, cardio);
+            setWorkoutSession((current) =>
+              current
+                ? {
+                    ...current,
+                    cardio_type: cardio?.type ?? null,
+                    cardio_minutes: cardio ? Math.round(cardio.minutes) : null,
+                    cardio_km: cardio?.km ?? null,
+                  }
+                : current
+            );
+            onChanged();
+            setCardioOpen(false);
+          } finally {
+            setSavingCardio(false);
+          }
         }}
       />
 
@@ -690,110 +770,6 @@ export default function SessionView({
 }
 
 
-// ── Passo de cardio antes de concluir ───────────────────────────────────────
-function CardioModal({
-  open,
-  concluding,
-  onClose,
-  onConfirm,
-}: {
-  open: boolean;
-  concluding: boolean;
-  onClose: () => void;
-  onConfirm: (cardio: CardioInput | null) => Promise<void>;
-}) {
-  const [type, setType] = useState<CardioInput["type"] | "nenhum">("nenhum");
-  const [minutes, setMinutes] = useState("");
-  const [km, setKm] = useState("");
-
-  useEffect(() => {
-    if (open) {
-      setType("nenhum");
-      setMinutes("");
-      setKm("");
-    }
-  }, [open]);
-
-  const minutesNum = Number(minutes.replace(",", "."));
-  const kmNum = Number(km.replace(",", "."));
-  const validCardio = type !== "nenhum" && minutes.trim() !== "" && Number.isFinite(minutesNum) && minutesNum > 0;
-  const canConfirm = type === "nenhum" || validCardio;
-
-  const options: { key: CardioInput["type"] | "nenhum"; label: string }[] = [
-    { key: "nenhum", label: "Não fiz" },
-    { key: "esteira", label: "Esteira" },
-    { key: "bike", label: "Bike" },
-    { key: "escada", label: "Escada" },
-  ];
-
-  return (
-    <Modal open={open} onClose={onClose} title="Fez cardio hoje?" center>
-      <p className="text-xs text-white/55">
-        Minutos e km do cardio entram na estimativa de calorias do treino.
-      </p>
-      <div className="mt-3 flex gap-1 rounded-2xl bg-white/10 p-1">
-        {options.map((option) => (
-          <button
-            key={option.key}
-            onClick={() => setType(option.key)}
-            className={`min-w-0 flex-1 rounded-xl px-1 py-2 text-xs font-semibold transition ${
-              type === option.key ? "bg-white/14 text-white" : "text-white/45"
-            }`}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-      {type !== "nenhum" && (
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <div>
-            <p className="mb-1 px-1 text-[10px] font-bold uppercase tracking-wider text-white/40">Minutos</p>
-            <input
-              className="field w-full"
-              inputMode="numeric"
-              placeholder="20"
-              value={minutes}
-              onChange={(e) => setMinutes(e.target.value)}
-            />
-          </div>
-          <div>
-            <p className="mb-1 px-1 text-[10px] font-bold uppercase tracking-wider text-white/40">
-              Km {type === "escada" ? "(opcional)" : "(opcional)"}
-            </p>
-            <input
-              className="field w-full"
-              inputMode="decimal"
-              placeholder={type === "escada" ? "—" : "3,0"}
-              value={km}
-              onChange={(e) => setKm(e.target.value)}
-            />
-          </div>
-        </div>
-      )}
-      <button
-        onClick={() =>
-          void onConfirm(
-            type === "nenhum"
-              ? null
-              : {
-                  type,
-                  minutes: minutesNum,
-                  km: km.trim() !== "" && Number.isFinite(kmNum) && kmNum > 0 ? kmNum : null,
-                }
-          )
-        }
-        disabled={concluding || !canConfirm}
-        className="btn btn-primary mt-4 flex w-full items-center justify-center gap-2"
-      >
-        <Icon name="check" size={16} /> {concluding ? "Concluindo…" : "Concluir treino"}
-      </button>
-      <button onClick={onClose} className="btn btn-ghost mt-2 w-full">
-        Voltar
-      </button>
-    </Modal>
-  );
-}
-
 // ── Modo foco: um exercício por tela, rolagem vertical com snap ─────────────
 
 function FocusMode({
@@ -810,6 +786,8 @@ function FocusMode({
   elapsedLabel,
   progress,
   doneIds,
+  cardio,
+  onCardio,
   concluding,
   onConclude,
 }: {
@@ -826,6 +804,8 @@ function FocusMode({
   elapsedLabel: string | null;
   progress: { logged: number; total: number };
   doneIds: Set<string>;
+  cardio: CardioInput | null;
+  onCardio: () => void;
   concluding: boolean;
   onConclude: (logged: number) => Promise<boolean>;
 }) {
@@ -1013,9 +993,23 @@ function FocusMode({
                 />
               </div>
               <button
+                onClick={onCardio}
+                className="btn btn-ghost mt-5 w-full justify-between !px-4"
+              >
+                <span className="flex items-center gap-2">
+                  <Icon name="timer" size={16} />
+                  {cardio ? "Cardio registrado" : "Fez cardio?"}
+                </span>
+                <span className="num text-xs text-aqua">
+                  {cardio
+                    ? `${Math.round(cardio.minutes)} min${cardio.km != null ? ` · ${cardio.km} km` : ""}`
+                    : "adicionar"}
+                </span>
+              </button>
+              <button
                 onClick={finishWorkout}
                 disabled={concluding}
-                className={`btn mt-7 w-full ${focusCanConclude ? "btn-primary" : "btn-ghost"}`}
+                className={`btn mt-2.5 w-full ${focusCanConclude ? "btn-primary" : "btn-ghost"}`}
               >
                 {concluding ? "Concluindo..." : "Concluir treino"}
               </button>

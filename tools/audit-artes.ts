@@ -1,33 +1,7 @@
-"use client";
-
-import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { DayAggregate, MonthAggregate, WeekAggregate, fmtCompact, formatDuration } from "@/lib/calc";
-import Icon from "./Icons";
-
-export interface ShareStats {
-  appName: string;
-  profileName: string;
-  sessionName: string;
-  workoutTitle?: string;
-  planName: string;
-  dateLabel: string;
-  exercisesDone: number;
-  exercisesTotal: number;
-  improved: number;
-  prs: number;
-  avgIncreasePct: number | null;
-  weeklyDone: number;
-  weeklyTarget: number;
-  durationSeconds: number | null;
-  caloriesEstimate: number | null;
-  loads: { name: string; load: number }[];
-  day?: DayAggregate;
-  week?: WeekAggregate;
-  month?: MonthAggregate;
-  bodyWeight?: { serie: (number | null)[]; atual: number | null; inicial: number | null; delta: number | null };
-}
-
+import { DayAggregate, MonthAggregate, WeekAggregate, fmtCompact, formatDuration } from "../src/lib/calc";
+export interface ShareStats { appName:string; profileName:string; sessionName:string; planName:string; dateLabel:string; exercisesDone:number; exercisesTotal:number; improved:number; prs:number; avgIncreasePct:number|null; weeklyDone:number; weeklyTarget:number; durationSeconds:number|null; caloriesEstimate:number|null; loads:{name:string;load:number}[]; day?:DayAggregate; week?:WeekAggregate; month?:MonthAggregate; bodyWeight?:{serie:(number|null)[];atual:number|null;inicial:number|null;delta:number|null}; }
+import { createCanvas, loadImage, registerFont } from "canvas";
+import * as path from "path";
 // ── Identidade Carbon ──────────────────────────────────────────────────────
 const W = 1080;
 const H = 1920;
@@ -333,7 +307,6 @@ function overlayScrim(ctx: CanvasRenderingContext2D, x: number, y: number, w: nu
 const dur = (s: ShareStats) => (s.durationSeconds != null ? formatDuration(s.durationSeconds).replace(" ", "") : "—");
 const kcalOf = (s: ShareStats) => (s.caloriesEstimate != null ? String(Math.round(s.caloriesEstimate)) : "—");
 const volOf = (s: ShareStats) => (s.day ? fmtCompact(s.day.volumeKg) : "—");
-const workoutName = (s: ShareStats) => s.workoutTitle ?? s.sessionName;
 const fmtHoras = (h: number) => {
   const horas = Math.floor(h);
   const min = Math.round((h - horas) * 60);
@@ -358,7 +331,7 @@ const dayGrid: Art["draw"] = (ctx, s, logo) => {
   label(ctx, "Calorias", x + col * 2, l1, 18);
   ctx.font = STAT(66);
   ctx.fillStyle = GIZ;
-  [workoutName(s), dur(s), kcalOf(s)].forEach((v, i) => {
+  [s.sessionName, dur(s), kcalOf(s)].forEach((v, i) => {
     let size = 66;
     ctx.font = STAT(size);
     while (size > 26 && ctx.measureText(v).width > col - 26) { size -= 3; ctx.font = STAT(size); }
@@ -390,7 +363,7 @@ const dayCircuit: Art["draw"] = (ctx, s, logo) => {
   label(ctx, "Treino de hoje", x, top + 84, 18);
   let size = 92;
   ctx.font = STAT(size);
-  const nome = workoutName(s).toUpperCase();
+  const nome = s.sessionName.toUpperCase();
   while (size > 40 && ctx.measureText(nome).width > w) { size -= 4; ctx.font = STAT(size); }
   ctx.fillStyle = GIZ;
   ctx.fillText(nome, x, top + 168);
@@ -427,7 +400,7 @@ const dayCircuit: Art["draw"] = (ctx, s, logo) => {
 const dayClean: Art["draw"] = (ctx, s, logo) => {
   const right = W - PAD;
   const linhas: [string, string, boolean][] = [
-    ["Treino", workoutName(s), false],
+    ["Treino", s.sessionName, false],
     ["Duração", dur(s), false],
     ["Calorias", kcalOf(s), false],
   ];
@@ -461,7 +434,7 @@ const dayCard: Art["draw"] = (ctx, s, logo) => {
   cardHeader(ctx, s.dateLabel, logo, x, 150, w);
   bracket(ctx, "Treino concluído", x, 300);
   let size = 128;
-  const nome = workoutName(s).toUpperCase();
+  const nome = s.sessionName.toUpperCase();
   ctx.font = STAT(size);
   while (size > 52 && ctx.measureText(nome).width > w) { size -= 5; ctx.font = STAT(size); }
   ctx.fillStyle = GIZ;
@@ -991,263 +964,108 @@ const ARTS: Art[] = [
   { key: "mes-recap", label: "Retrospectiva", period: "mes", kind: "card", draw: monthRecap },
 ];
 
-const PERIODS: { key: Period; label: string }[] = [
-  { key: "dia", label: "Dia" },
-  { key: "semana", label: "Semana" },
-  { key: "mes", label: "Mês" },
+const cheio: ShareStats = {
+  appName:"RTrainning", profileName:"Rafael", sessionName:"Push A", planName:"Plano", dateLabel:"hoje · 19:42",
+  exercisesDone:6, exercisesTotal:6, improved:3, prs:2, avgIncreasePct:6.4, weeklyDone:3, weeklyTarget:5,
+  durationSeconds:4320, caloriesEstimate:842, loads:[],
+  day:{ volumeKg:12480, series:22, splitMuscular:[{grupo:"Peito",pct:50},{grupo:"Ombro",pct:30},{grupo:"Tríceps",pct:20}],
+        exerciseNames:[{name:"Supino reto",sets:4,reps:"8"},{name:"Desenvolvimento",sets:3,reps:"10"},
+                       {name:"Supino inclinado",sets:3,reps:"10"},{name:"Tríceps corda",sets:4,reps:"12"}] },
+  week:{ semanaNum:42, diasCheck:["treino","descanso","treino","treino","descanso","hoje","descanso"],
+         volumePorDia:[9800,0,11200,10400,0,12480,0], volumeKg:41200, horas:4.966, kcal:3240, prs:3, streakSemanas:8, letrasTreino:["A","B","C","D"] },
+  month:{ mes:"Outubro", diasNoMes:31, volumeKg:52400, treinos:16, prs:5,
+          prNomes:["Agachamento","Supino reto","Levantamento terra","Desenvolvimento","Remada curvada"],
+          consistenciaPct:80, evolucaoCargaPct:14,
+          evolucaoPorLift:[{nome:"Agachamento",pct:18},{nome:"Supino reto",pct:12},{nome:"Levantamento terra",pct:9},{nome:"Desenvolvimento",pct:7},{nome:"Remada curvada",pct:5}],
+          volumePorSemana:[11800,13200,12600,14800,0], calendario:Array.from({length:31},(_,i)=>[0,2,4,7,9,11,14,16,18,21,23,25,28,29,30].includes(i)), streakSemanas:8 },
+  bodyWeight:{ serie:Array.from({length:31},(_,i)=>78.4-(i*0.042)), atual:77.1, inicial:78.4, delta:-1.3 },
+};
+const vazio: ShareStats = { ...cheio, durationSeconds:null, caloriesEstimate:null, prs:0, day:undefined, week:undefined, month:undefined, bodyWeight:undefined };
+const longo: ShareStats = { ...cheio, sessionName:"Treino de Posterior Completo", durationSeconds:36000,
+  day:{ ...cheio.day!, volumeKg:152400, series:120, exerciseNames:[{name:"Romanian deadlift com barra hexagonal",sets:4,reps:"8"}] },
+  month:{ ...cheio.month!, evolucaoPorLift:[{nome:"Levantamento terra romeno unilateral",pct:118}] } };
+
+const arts: [string, any, boolean][] = [
+  ["dia-grid",dayGrid,false],["dia-circuito",dayCircuit,false],["dia-limpo",dayClean,false],
+  ["dia-card",dayCard,true],["dia-numeros",dayNumbers,true],
+  ["sem-completa",weekFull,false],["sem-chip",weekChip,false],["sem-painel",weekPanel,true],["sem-streak",weekStreak,true],
+  ["mes-chip",monthChip,false],["mes-evolucao",monthEvolution,false],["mes-lifts",monthLifts,true],
+  ["mes-peso",monthWeight,true],["mes-consistencia",monthConsistency,true],["mes-prs",monthPRs,true],["mes-recap",monthRecap,true],
 ];
 
-function renderArt(canvas: HTMLCanvasElement, art: Art, stats: ShareStats, logo: HTMLImageElement | null, scale: number) {
-  canvas.width = Math.round(W * scale);
-  canvas.height = Math.round(H * scale);
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.save();
-  ctx.scale(scale, scale);
-  ctx.textBaseline = "alphabetic";
-  art.draw(ctx, stats, logo);
-  ctx.restore();
-}
 
-function canvasBlob(canvas: HTMLCanvasElement): Promise<Blob> {
-  return new Promise((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("canvas vazio"))), "image/png")
-  );
-}
+// ── Detector de sobreposição e estouro ────────────────────────────────────
+interface Caixa { texto: string; x: number; y: number; w: number; h: number; }
 
-export default function ShareCard({ stats, onClose }: { stats: ShareStats; onClose: () => void }) {
-  const [period, setPeriod] = useState<Period>("dia");
-  const [active, setActive] = useState(0);
-  const [message, setMessage] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
-  const logoRef = useRef<HTMLImageElement | null>(null);
-  const previewRefs = useRef<(HTMLCanvasElement | null)[]>([]);
-  const trackRef = useRef<HTMLDivElement>(null);
-
-  const arts = useMemo(() => ARTS.filter((a) => a.period === period), [period]);
-
-  useEffect(() => {
-    const bodyOverflow = document.body.style.overflow;
-    const htmlOverflow = document.documentElement.style.overflow;
-    document.body.style.overflow = "hidden";
-    document.documentElement.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = bodyOverflow;
-      document.documentElement.style.overflow = htmlOverflow;
-    };
-  }, []);
-
-  // Fontes e logo precisam estar carregados antes do primeiro traço no canvas.
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      const img = new window.Image();
-      img.src = "/assets/logo-white.png";
-      const logoPromise = new Promise<void>((resolve) => {
-        img.onload = () => resolve();
-        img.onerror = () => resolve();
-      });
-      const fonts = (document as Document & { fonts?: FontFaceSet }).fonts;
-      await Promise.all([
-        logoPromise,
-        fonts?.load("900 30px Archivo").catch(() => null),
-        fonts?.load("400 96px Anton").catch(() => null),
-        fonts?.load("700 30px 'Space Grotesk'").catch(() => null),
-        fonts?.ready,
-      ]);
-      if (!alive) return;
-      logoRef.current = img;
-      setReady(true);
-    })();
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!ready) return;
-    arts.forEach((art, i) => {
-      const canvas = previewRefs.current[i];
-      if (canvas) renderArt(canvas, art, stats, logoRef.current, 0.32);
-    });
-  }, [ready, arts, stats]);
-
-  useEffect(() => {
-    setActive(0);
-    trackRef.current?.scrollTo({ left: 0 });
-  }, [period]);
-
-  function handleScroll() {
-    const el = trackRef.current;
-    if (!el) return;
-    const idx = Math.round(el.scrollLeft / (el.clientWidth * 0.78));
-    setActive(Math.min(arts.length - 1, Math.max(0, idx)));
-  }
-
-  function fullCanvas(): HTMLCanvasElement | null {
-    const art = arts[active];
-    if (!art) return null;
-    const canvas = document.createElement("canvas");
-    renderArt(canvas, art, stats, logoRef.current, 1);
-    return canvas;
-  }
-
-  function fileName() {
-    const art = arts[active];
-    return `rtrainning-${art?.key ?? "arte"}-${stats.dateLabel.replace(/\//g, "-")}.png`;
-  }
-
-  async function save() {
-    const canvas = fullCanvas();
-    if (!canvas) return;
-    const blob = await canvasBlob(canvas);
-    const file = new File([blob], fileName(), { type: "image/png" });
-    // iOS/Android: a folha nativa oferece "Salvar imagem", que grava na galeria.
-    if (navigator.canShare?.({ files: [file] })) {
-      try {
-        setMessage('Toque em "Salvar imagem" para gravar na galeria.');
-        await navigator.share({ files: [file] });
-        return;
-      } catch (err) {
-        setMessage(null);
-        if ((err as DOMException)?.name === "AbortError") return;
+function contextoInstrumentado(base: any, caixas: Caixa[]) {
+  return new Proxy(base, {
+    get(t, prop: string) {
+      if (prop === "fillText") {
+        return (texto: string, x: number, y: number) => {
+          const m = base.measureText(texto);
+          const w = m.width;
+          const px = parseInt(String(base.font).match(/(\d+)px/)?.[1] ?? "16", 10);
+          const alt = px * 0.74; // altura de caixa aproximada (cap height)
+          let x0 = x;
+          if (base.textAlign === "right") x0 = x - w;
+          if (base.textAlign === "center") x0 = x - w / 2;
+          let y0 = y - alt;
+          if (base.textBaseline === "middle") y0 = y - alt / 2;
+          // Marca d'água decorativa (alpha baixo) não conta como sobreposição.
+          if (String(texto).trim() && (base.globalAlpha ?? 1) > 0.2)
+            caixas.push({ texto: String(texto), x: x0, y: y0, w, h: alt });
+          return base.fillText(texto, x, y);
+        };
       }
-    }
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName();
-    link.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setMessage("PNG salvo em 1080×1920.");
-  }
-
-  async function share() {
-    const canvas = fullCanvas();
-    if (!canvas) return;
-    const blob = await canvasBlob(canvas);
-    const file = new File([blob], fileName(), { type: "image/png" });
-    if (navigator.canShare?.({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: "RTrainning" });
-        return;
-      } catch (err) {
-        if ((err as DOMException)?.name === "AbortError") return;
-      }
-    }
-    await save();
-  }
-
-  async function copy() {
-    try {
-      const ClipboardItemCtor = window.ClipboardItem;
-      if (!navigator.clipboard?.write || !ClipboardItemCtor) throw new Error("sem clipboard");
-      // Safari exige o ClipboardItem criado com Promise dentro do gesto do usuário.
-      const blobPromise = (async () => {
-        const canvas = fullCanvas();
-        if (!canvas) throw new Error("sem canvas");
-        return canvasBlob(canvas);
-      })();
-      await navigator.clipboard.write([new ClipboardItemCtor({ "image/png": blobPromise })]);
-      setMessage("Copiado — cole na Story.");
-    } catch {
-      setMessage("Copiar indisponível aqui. Use Salvar.");
-    }
-  }
-
-  const current = arts[active];
-
-  const overlay = (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-ink">
-      <div className="flex items-center justify-between px-5 pb-2 pt-5">
-        <div>
-          <p className="font-brand text-lg font-black text-giz">
-            RT<span style={{ fontSize: "0.72em" }}>rainning</span>
-          </p>
-          <p className="label mt-0.5">Compartilhar</p>
-        </div>
-        <button onClick={onClose} className="btn btn-ghost !min-h-0 !rounded-xl !px-3 !py-2" aria-label="Fechar">
-          <Icon name="x" size={16} />
-        </button>
-      </div>
-
-      <div className="flex gap-1 px-5">
-        {PERIODS.map((p) => (
-          <button
-            key={p.key}
-            onClick={() => setPeriod(p.key)}
-            className={`flex-1 rounded-2xl px-3 py-2.5 text-sm font-semibold transition ${
-              period === p.key ? "bg-aqua text-[#06120F]" : "border border-iron bg-[#141414] text-muted"
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
-
-      <div
-        ref={trackRef}
-        onScroll={handleScroll}
-        className="mt-4 flex min-h-0 flex-1 snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden px-5 pb-2"
-        style={{ scrollbarWidth: "none" }}
-      >
-        {arts.map((art, i) => (
-          <div key={art.key} className="flex w-[78%] shrink-0 snap-center flex-col">
-            <div
-              className={`relative min-h-0 flex-1 overflow-hidden rounded-3xl border ${
-                art.kind === "overlay" ? "share-checker border-iron" : "border-line bg-deep"
-              }`}
-            >
-              <canvas
-                ref={(el) => {
-                  previewRefs.current[i] = el;
-                }}
-                className="h-full w-full object-contain"
-              />
-            </div>
-            <p className="mt-2 truncate text-center text-xs text-muted">
-              {art.label}
-              <span className="text-faded"> · {art.kind === "overlay" ? "PNG transparente" : "card"}</span>
-            </p>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex justify-center gap-1.5 py-2">
-        {arts.map((art, i) => (
-          <span
-            key={art.key}
-            className={`h-1.5 rounded-full transition-all ${i === active ? "w-5 bg-aqua" : "w-1.5 bg-iron"}`}
-          />
-        ))}
-      </div>
-
-      <div className="px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-        {message && <p className="mb-2 text-center text-xs text-muted">{message}</p>}
-        <div className="flex gap-2">
-          {current?.kind === "overlay" ? (
-            <button onClick={() => void copy()} className="btn btn-primary flex-[1.3] gap-2">
-              <Icon name="copy" size={16} /> Copiar
-            </button>
-          ) : (
-            <button onClick={() => void share()} className="btn btn-primary flex-[1.3] gap-2">
-              <Icon name="share" size={16} /> Compartilhar
-            </button>
-          )}
-          <button onClick={() => void save()} className="btn btn-ghost flex-1 gap-2">
-            <Icon name="download" size={16} /> Salvar
-          </button>
-        </div>
-        <p className="mt-2 text-center text-[11px] text-faded">
-          {current?.kind === "overlay"
-            ? "Fundo transparente — cole sobre sua foto na Story."
-            : "Imagem completa 1080×1920 para a Story."}
-        </p>
-      </div>
-    </div>
-  );
-
-  if (typeof document === "undefined") return null;
-  return createPortal(overlay, document.body);
+      const v = t[prop];
+      return typeof v === "function" ? v.bind(t) : v;
+    },
+    set(t, prop: string, value) { t[prop] = value; return true; },
+  });
 }
+
+function sobrepoe(a: Caixa, b: Caixa) {
+  const folga = 2;
+  return a.x < b.x + b.w - folga && a.x + a.w - folga > b.x && a.y < b.y + b.h - folga && a.y + a.h - folga > b.y;
+}
+
+async function auditar() {
+  const fontDir = process.env.RTRAINNING_FONT_DIR ?? path.resolve("tmp", "fonts");
+  registerFont(path.join(fontDir, "Anton-Regular.ttf"), { family: "Anton" });
+  registerFont(path.join(fontDir, "Archivo-Black.ttf"), { family: "Archivo", weight: "900" });
+  registerFont(path.join(fontDir, "SpaceGrotesk-Regular.ttf"), { family: "Space Grotesk", weight: "500" });
+  registerFont(path.join(fontDir, "SpaceGrotesk-Bold.ttf"), { family: "Space Grotesk", weight: "700" });
+  const logo = await loadImage("./public/assets/logo-white.png");
+
+  let problemas = 0;
+  const casos: [string, ShareStats][] = [["padrão", cheio], ["sem dados", vazio], ["textos longos", longo]];
+  for (const [nome, draw] of arts) {
+    for (const [caso, stats] of casos) {
+      const canvas = createCanvas(1080, 1920);
+      const raw: any = canvas.getContext("2d");
+      raw.textBaseline = "alphabetic";
+      const caixas: Caixa[] = [];
+      const ctx = contextoInstrumentado(raw, caixas);
+      draw(ctx, stats, logo);
+
+      for (const c of caixas) {
+        if (c.x < -1 || c.x + c.w > 1081) {
+          problemas++;
+          console.log(`ESTOURA LATERAL  ${nome} [${caso}] "${c.texto.slice(0,26)}" x=${Math.round(c.x)} fim=${Math.round(c.x+c.w)}`);
+        }
+        if (c.y < -1 || c.y + c.h > 1921) {
+          problemas++;
+          console.log(`ESTOURA VERTICAL ${nome} [${caso}] "${c.texto.slice(0,26)}" y=${Math.round(c.y)}`);
+        }
+      }
+      for (let i = 0; i < caixas.length; i++)
+        for (let j = i + 1; j < caixas.length; j++)
+          if (sobrepoe(caixas[i], caixas[j])) {
+            problemas++;
+            console.log(`SOBREPOSIÇÃO     ${nome} [${caso}] "${caixas[i].texto.slice(0,20)}" × "${caixas[j].texto.slice(0,20)}"`);
+          }
+    }
+  }
+  console.log(problemas === 0 ? "\nnenhum texto sobreposto ou fora do quadro" : `\n${problemas} problemas`);
+}
+auditar();

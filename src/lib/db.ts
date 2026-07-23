@@ -494,6 +494,19 @@ export async function startWorkoutTimer(workoutSessionId: string): Promise<strin
   return data.started_at ?? now;
 }
 
+/** Salva o cardio da sessão assim que o usuário registra (antes de concluir). */
+export async function saveCardio(workoutSessionId: string, cardio: CardioInput | null): Promise<void> {
+  const { error } = await supabase
+    .from("workout_sessions")
+    .update({
+      cardio_type: cardio?.type ?? null,
+      cardio_minutes: cardio ? Math.max(1, Math.round(cardio.minutes)) : null,
+      cardio_km: cardio?.km ?? null,
+    })
+    .eq("id", workoutSessionId);
+  if (error) throw error;
+}
+
 export async function markSessionCompleted(
   workoutSessionId: string,
   cardio: CardioInput | null = null

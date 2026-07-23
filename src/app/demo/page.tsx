@@ -153,6 +153,7 @@ export default function DemoPage() {
       volumeKg: 52400,
       treinos: 16,
       prs: 5,
+      prNomes: ["Agachamento", "Supino reto", "Levantamento terra", "Desenvolvimento", "Remada curvada"],
       consistenciaPct: 80,
       evolucaoCargaPct: 14,
       evolucaoPorLift: [
@@ -165,6 +166,12 @@ export default function DemoPage() {
       volumePorSemana: [11800, 13200, 12600, 14800, 0],
       calendario: Array.from({ length: 31 }, (_, i) => [0, 2, 4, 7, 9, 11, 14, 16, 18, 21, 23, 25, 28, 29, 30, 1].includes(i)),
       streakSemanas: 8,
+    },
+    bodyWeight: {
+      serie: Array.from({ length: 31 }, (_, index) => 78.4 - index * 0.043),
+      atual: 77.1,
+      inicial: 78.4,
+      delta: -1.3,
     },
   };
 
@@ -320,7 +327,7 @@ export default function DemoPage() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold">Story e overlay transparente</p>
-            <p className="mt-1 text-xs text-white/50">3 conceitos em cada formato, com tempo e estimativa de calorias.</p>
+            <p className="mt-1 text-xs text-white/50">16 artes de dia, semana e mês, em card ou overlay transparente.</p>
           </div>
           <button onClick={() => setShowShare(true)} className="btn btn-primary shrink-0 !px-4">
             <Icon name="share" size={16} /> Ver

@@ -16,6 +16,7 @@ const PATHS: Record<string, React.ReactNode> = {
   plus: <path d="M12 5v14M5 12h14" />,
   x: <path d="M18 6L6 18M6 6l12 12" />,
   play: <path d="M8 5.5v13l11-6.5-11-6.5z" />,
+  pause: <path d="M9 5v14M15 5v14" />,
   trash: (
     <>
       <path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
@@ -24,6 +25,7 @@ const PATHS: Record<string, React.ReactNode> = {
   ),
   pencil: <path d="M17 3a2.8 2.8 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" />,
   chevronDown: <path d="M6 9l6 6 6-6" />,
+  chevronRight: <path d="M9 6l6 6-6 6" />,
   timer: (
     <>
       <circle cx="12" cy="13" r="8" />

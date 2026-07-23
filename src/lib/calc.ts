@@ -609,6 +609,53 @@ export interface WeekAggregate {
   letrasTreino: string[];
 }
 
+export interface PersonalRecordEvent {
+  exerciseId: string;
+  name: string;
+  date: string;
+  load: number;
+}
+
+/** Recordes reais: a primeira carga vira baseline e nunca conta como PR. */
+export function personalRecordsInPeriod(
+  h: HistoryBundle,
+  inPeriod: (date: string) => boolean
+): PersonalRecordEvent[] {
+  const completed = h.sessions
+    .filter((session) => session.completed_at)
+    .sort((a, b) =>
+      a.workout_date === b.workout_date
+        ? (a.completed_at ?? "").localeCompare(b.completed_at ?? "")
+        : a.workout_date.localeCompare(b.workout_date)
+    );
+  const logsBySession = new Map<string, typeof h.logs>();
+  for (const log of h.logs) {
+    const logs = logsBySession.get(log.workout_session_id) ?? [];
+    logs.push(log);
+    logsBySession.set(log.workout_session_id, logs);
+  }
+
+  const maxByExercise = new Map<string, number>();
+  const events: PersonalRecordEvent[] = [];
+  for (const session of completed) {
+    for (const log of logsBySession.get(session.id) ?? []) {
+      const { load } = bestLoadOfLog(log.id, h.sets);
+      if (load === null || load <= 0) continue;
+      const previous = maxByExercise.get(log.exercise_id);
+      if (previous !== undefined && load > previous && inPeriod(session.workout_date)) {
+        events.push({
+          exerciseId: log.exercise_id,
+          name: log.exercise_name_snapshot,
+          date: session.workout_date,
+          load,
+        });
+      }
+      if (previous === undefined || load > previous) maxByExercise.set(log.exercise_id, load);
+    }
+  }
+  return events;
+}
+
 /** Número ISO da semana (para rotular "SEM 42"). */
 export function isoWeekNumber(date: Date): number {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -630,7 +677,7 @@ function toISO(d: Date): string {
 }
 
 /** Semana de calendário (segunda→domingo) que contém `todayISO`. */
-export function weekAggregate(h: HistoryBundle, todayISO: string, prsHoje = 0): WeekAggregate {
+export function weekAggregate(h: HistoryBundle, todayISO: string, _prsHoje = 0): WeekAggregate {
   const monday = mondayOf(todayISO);
   const days: string[] = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday);
@@ -655,6 +702,7 @@ export function weekAggregate(h: HistoryBundle, todayISO: string, prsHoje = 0): 
   const horas = inWeek.reduce((sum, s) => sum + (s.duration_seconds ?? 0), 0) / 3600;
   const kcal = inWeek.reduce((sum, s) => sum + (s.calories_estimate ?? 0), 0);
   const letrasTreino = [...new Set(inWeek.map((s) => s.session_key))].sort();
+  const prs = personalRecordsInPeriod(h, (date) => days.includes(date)).length;
 
   // Streak: semanas consecutivas (para trás) com ao menos um treino concluído.
   let streakSemanas = 0;
@@ -677,7 +725,7 @@ export function weekAggregate(h: HistoryBundle, todayISO: string, prsHoje = 0): 
     volumeKg,
     horas,
     kcal: Math.round(kcal),
-    prs: prsHoje,
+    prs,
     streakSemanas,
     letrasTreino,
   };
@@ -689,6 +737,7 @@ export interface MonthAggregate {
   volumeKg: number;
   treinos: number;
   prs: number;
+  prNomes: string[];
   consistenciaPct: number;
   evolucaoCargaPct: number | null;
   evolucaoPorLift: { nome: string; pct: number }[];
@@ -734,6 +783,8 @@ export function monthAggregate(h: HistoryBundle, todayISO: string, streakSemanas
   // média + por lift em %, nunca kg absoluto de um exercício isolado).
   const inMonth = (date: string) => date.startsWith(prefix);
   const evolucaoCargaPct = evolutionPctInPeriod(h, inMonth);
+  const prEvents = personalRecordsInPeriod(h, inMonth);
+  const prNomes = [...new Set(prEvents.map((event) => event.name))];
 
   const sessionById = new Map(h.sessions.map((s) => [s.id, s]));
   const byExercise = new Map<string, { name: string; points: { date: string; load: number; inside: boolean }[] }>();
@@ -779,7 +830,8 @@ export function monthAggregate(h: HistoryBundle, todayISO: string, streakSemanas
     diasNoMes,
     volumeKg,
     treinos: doneDates.size,
-    prs: 0,
+    prs: prEvents.length,
+    prNomes,
     consistenciaPct: uteis ? Math.round((treinosEmUteis / uteis) * 100) : 0,
     evolucaoCargaPct,
     evolucaoPorLift: evolucaoPorLift.slice(0, 5),
@@ -796,4 +848,32 @@ export function fmtCompact(n: number): string {
     return `${k >= 100 ? Math.round(k) : k.toFixed(1).replace(".0", "")}k`;
   }
   return String(Math.round(n));
+}
+
+/** Série de peso corporal do mês (1 ponto por dia, com carry-forward). */
+export function bodyWeightMonth(
+  metrics: { date: string; weight_kg: number }[],
+  todayISO: string
+): { serie: (number | null)[]; atual: number | null; inicial: number | null; delta: number | null } {
+  const ref = new Date(`${todayISO}T12:00:00`);
+  const prefix = `${ref.getFullYear()}-${String(ref.getMonth() + 1).padStart(2, "0")}`;
+  const dias = new Date(ref.getFullYear(), ref.getMonth() + 1, 0).getDate();
+  const porDia = new Map(metrics.map((m) => [m.date, m.weight_kg]));
+
+  // Último peso conhecido ANTES do mês serve de ponto de partida.
+  const anteriores = metrics.filter((m) => m.date < `${prefix}-01`).sort((a, b) => (a.date < b.date ? -1 : 1));
+  let ultimo: number | null = anteriores.length ? anteriores[anteriores.length - 1].weight_kg : null;
+
+  const serie: (number | null)[] = [];
+  for (let d = 1; d <= dias; d++) {
+    const iso = `${prefix}-${String(d).padStart(2, "0")}`;
+    const valor = porDia.get(iso);
+    if (valor != null) ultimo = valor;
+    serie.push(ultimo);
+  }
+
+  const reais = serie.filter((v): v is number => v != null);
+  const inicial = reais.length ? reais[0] : null;
+  const atual = reais.length ? reais[reais.length - 1] : null;
+  return { serie, atual, inicial, delta: inicial != null && atual != null ? atual - inicial : null };
 }
