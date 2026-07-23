@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { listFullHistoryAllProfiles, listGroups, listProfiles } from "@/lib/db";
-import { HistoryBundle, overallEvolutionPct, fmtPct } from "@/lib/calc";
+import { HistoryBundle, evolutionPctInPeriod, fmtPct } from "@/lib/calc";
 import { ExerciseLogRow, ProfileGroupRow, ProfileRow, SetLogRow, WorkoutSessionRow } from "@/lib/types";
 import { Spinner, TabBar } from "@/components/ui";
 import Icon from "@/components/Icons";
@@ -76,32 +76,25 @@ export default function RankingPage() {
         .sort((a, b) => b.value - a.value || a.profile.name.localeCompare(b.profile.name));
     }
 
-    // Evolução %: para cada perfil, monta o histórico do período e mede a evolução média
-    const sessionsByProfile = new Map<string, WorkoutSessionRow[]>();
-    for (const s of full.sessions) {
-      if (!inPeriod(s.workout_date)) continue;
-      const arr = sessionsByProfile.get(s.profile_id) ?? [];
-      arr.push(s);
-      sessionsByProfile.set(s.profile_id, arr);
-    }
-
+    // Evolução %: compara a carga do período com a carga anterior a ele.
     return scoped
       .map((p) => {
-        const sessions = sessionsByProfile.get(p.id) ?? [];
+        // Histórico COMPLETO do perfil: o baseline precisa enxergar o que veio
+        // antes do período (senão a semana atual nunca tem com o que comparar).
+        const sessions = full.sessions.filter((s) => s.profile_id === p.id);
         const sessionIds = new Set(sessions.map((s) => s.id));
         const logs = full.logs.filter((l) => sessionIds.has(l.workout_session_id));
         const logIds = new Set(logs.map((l) => l.id));
         const sets = full.sets.filter((s) => logIds.has(s.exercise_log_id));
         const h: HistoryBundle = { sessions, logs, sets };
-        const exIds = [...new Set(logs.map((l) => l.exercise_id))];
-        const pct = overallEvolutionPct(exIds, h);
+        const pct = evolutionPctInPeriod(h, inPeriod);
         return { profile: p, value: pct ?? -Infinity };
       })
       .sort((a, b) => b.value - a.value || a.profile.name.localeCompare(b.profile.name));
   }, [profiles, full, mode, inPeriod, groupFilter]);
 
   const label = period === "semana" ? "nesta semana" : period === "mes" ? "neste mês" : "neste ano";
-  const MEDAL = ["text-amber-300", "text-slate-300", "text-orange-400"];
+  const MEDAL = ["text-fire", "text-slate-300", "text-orange-400"];
 
   return (
     <div className="fade-in">
@@ -110,7 +103,7 @@ export default function RankingPage() {
           <Icon name="arrowLeft" size={14} /> Perfis
         </Link>
         <div className="mt-1 flex items-center gap-2">
-          <span className="text-amber-300">
+          <span className="text-fire">
             <Icon name="trophy" size={24} />
           </span>
           <h1 className="font-display text-2xl font-bold">Ranking</h1>
@@ -147,7 +140,7 @@ export default function RankingPage() {
           <button
             onClick={() => setGroupFilter("todos")}
             className={`shrink-0 rounded-2xl border px-3 py-1.5 text-xs font-semibold ${
-              groupFilter === "todos" ? "border-glow/60 bg-glow/15 text-glow" : "border-white/12 bg-white/5 text-white/55"
+              groupFilter === "todos" ? "border-glow/60 bg-glow/15 text-glow" : "border-white/10 bg-white/5 text-white/55"
             }`}
           >
             Todos
@@ -157,7 +150,7 @@ export default function RankingPage() {
               key={g.id}
               onClick={() => setGroupFilter(g.id)}
               className={`shrink-0 rounded-2xl border px-3 py-1.5 text-xs font-semibold ${
-                groupFilter === g.id ? "border-glow/60 bg-glow/15 text-glow" : "border-white/12 bg-white/5 text-white/55"
+                groupFilter === g.id ? "border-glow/60 bg-glow/15 text-glow" : "border-white/10 bg-white/5 text-white/55"
               }`}
             >
               {g.name}
@@ -177,7 +170,7 @@ export default function RankingPage() {
             return (
               <div
                 key={profile.id}
-                className={`glass flex items-center gap-3 p-3.5 ${i === 0 && hasData ? "glass-strong border-amber-300/40" : ""}`}
+                className={`glass flex items-center gap-3 p-3.5 ${i === 0 && hasData ? "glass-strong border-fire/40" : ""}`}
               >
                 <span className={`font-display w-7 text-center text-lg font-bold ${MEDAL[i] ?? "text-white/35"}`}>
                   {i + 1}º
@@ -202,7 +195,7 @@ export default function RankingPage() {
                         : `sem dados suficientes ${label}`}
                   </span>
                 </span>
-                <span className={`num font-display text-2xl font-bold ${mode === "checkins" ? "text-glow" : "text-ok"}`}>
+                <span className={`num font-display text-2xl font-bold ${mode === "checkins" ? "text-glow" : "text-aqua"}`}>
                   {mode === "checkins" ? value : hasData ? fmtPct(value) : "—"}
                 </span>
               </div>

@@ -174,7 +174,7 @@ export default function EvolucaoView({
   }, [loadByPeriod, periods]);
 
   const groupNames = useMemo(() => [...new Set(allExercises.map((e) => e.primaryMuscleGroup))], [allExercises]);
-  const GROUP_COLORS = ["#22D3EE", "#8B7CF8", "#34D399", "#FBBF24", "#F472B6", "#60A5FA", "#F87171", "#A3E635"];
+  const GROUP_COLORS = ["#44E2D9", "#44E2D9", "#44E2D9", "#FBBF24", "#F472B6", "#60A5FA", "#F87171", "#A3E635"];
 
   async function saveWeight() {
     if (!wKg.trim() || !wDate) return;
@@ -268,7 +268,7 @@ export default function EvolucaoView({
                 <XAxis dataKey="data" tick={{ fill: "#8a93a6", fontSize: 10 }} />
                 <YAxis domain={["auto", "auto"]} tick={{ fill: "#8a93a6", fontSize: 10 }} width={34} />
                 <Tooltip {...CHART_TOOLTIP} />
-                <Line type="monotone" dataKey="kg" stroke="#22D3EE" strokeWidth={2.5} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="kg" stroke="#44E2D9" strokeWidth={2.5} dot={{ r: 3 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -299,8 +299,8 @@ export default function EvolucaoView({
 
       {/* Aviso de estagnação */}
       {stalled.length > 0 && (
-        <div className="glass fade-in border-amber-400/25 p-4">
-          <div className="mb-2 flex items-center gap-2 text-amber-300">
+        <div className="glass fade-in border-fire/25 p-4">
+          <div className="mb-2 flex items-center gap-2 text-fire">
             <Icon name="alert" size={17} />
             <h3 className="font-display text-sm font-bold">Atenção à estagnação</h3>
           </div>
@@ -358,7 +358,7 @@ export default function EvolucaoView({
                       <XAxis dataKey="periodo" tick={{ fill: "#8a93a6", fontSize: 10 }} />
                       <YAxis tick={{ fill: "#8a93a6", fontSize: 10 }} width={34} />
                       <Tooltip {...CHART_TOOLTIP} />
-                      <Line type="monotone" dataKey="carga" name="carga (kg)" stroke="#8B7CF8" strokeWidth={2.5} dot={{ r: 3 }} connectNulls />
+                      <Line type="monotone" dataKey="carga" name="carga (kg)" stroke="#44E2D9" strokeWidth={2.5} dot={{ r: 3 }} connectNulls />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -407,7 +407,7 @@ export default function EvolucaoView({
                     <XAxis dataKey="periodo" tick={{ fill: "#8a93a6", fontSize: 10 }} />
                     <YAxis tick={{ fill: "#8a93a6", fontSize: 10 }} width={34} />
                     <Tooltip {...CHART_TOOLTIP} />
-                    <Line type="monotone" dataKey="media" name="média (kg)" stroke="#22D3EE" strokeWidth={2.5} dot={{ r: 3 }} connectNulls />
+                    <Line type="monotone" dataKey="media" name="média (kg)" stroke="#44E2D9" strokeWidth={2.5} dot={{ r: 3 }} connectNulls />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -432,7 +432,7 @@ export default function EvolucaoView({
                   <XAxis dataKey="grupo" tick={{ fill: "#8a93a6", fontSize: 10 }} />
                   <YAxis tick={{ fill: "#8a93a6", fontSize: 10 }} width={34} />
                   <Tooltip {...CHART_TOOLTIP} />
-                  <Bar dataKey="pct" name="evolução %" fill="#34D399" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="pct" name="evolução %" fill="#44E2D9" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -440,7 +440,7 @@ export default function EvolucaoView({
               {evo.groups.map((g) => (
                 <div key={g.muscleGroup} className="flex items-center justify-between text-sm">
                   <span className="text-white/75">{g.muscleGroup}</span>
-                  <span className={`num font-bold ${(g.evolutionPct ?? 0) > 0 ? "text-ok" : "text-white/50"}`}>
+                  <span className={`num font-bold ${(g.evolutionPct ?? 0) > 0 ? "text-aqua" : "text-white/50"}`}>
                     {fmtPct(g.evolutionPct)}
                   </span>
                 </div>
@@ -501,7 +501,7 @@ export default function EvolucaoView({
           {exporting ? "Gerando…" : "Exportar evolução"}
         </button>
         {!plan && <p className="mt-2 text-xs text-white/45">Importe um treino primeiro.</p>}
-        {exportMsg && <p className="mt-2 text-xs text-emerald-300">{exportMsg}</p>}
+        {exportMsg && <p className="mt-2 text-xs text-aqua">{exportMsg}</p>}
       </Section>
 
       {/* 6. Limpar dados de teste */}

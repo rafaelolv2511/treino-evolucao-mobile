@@ -5,6 +5,9 @@ import { createPortal } from "react-dom";
 import {
   CardioInput,
   HistoryBundle,
+  dayAggregate,
+  monthAggregate,
+  weekAggregate,
   bestLoadOfLog,
   calendarWeekSummary,
   formatDuration,
@@ -282,6 +285,16 @@ export default function SessionView({
 
   const flatExercises = session.exercises;
 
+  const todayForShare = workoutSession?.workout_date ?? date;
+  const weakAggregateSafe = useMemo(
+    () => weekAggregate(fullHistory, todayForShare, summary.prs),
+    [fullHistory, todayForShare, summary.prs]
+  );
+  const monthAggregateSafe = useMemo(
+    () => monthAggregate(fullHistory, todayForShare, weakAggregateSafe.streakSemanas),
+    [fullHistory, todayForShare, weakAggregateSafe.streakSemanas]
+  );
+
   const shareStats: ShareStats = {
     appName: "RTrainning",
     profileName: profile.name,
@@ -298,6 +311,10 @@ export default function SessionView({
     durationSeconds: workoutSession?.duration_seconds ?? null,
     caloriesEstimate: workoutSession?.calories_estimate ?? null,
     loads: summary.todayLoads,
+    // Agregados Carbon: dia vem da sessão atual; semana e mês do histórico completo do perfil.
+    day: workoutSession ? dayAggregate(history, workoutSession.id) : undefined,
+    week: weakAggregateSafe,
+    month: monthAggregateSafe,
   };
 
   function isDone(ex: PlanExercise): boolean {
@@ -348,7 +365,7 @@ export default function SessionView({
                     <p className="font-semibold">{m.name}</p>
                     {m.description && <p className="mt-1 text-xs text-white/60">{m.description}</p>}
                   </div>
-                  <span className="shrink-0 rounded-xl bg-white/8 px-2.5 py-1 text-xs text-white/70">
+                  <span className="shrink-0 rounded-xl bg-white/10 px-2.5 py-1 text-xs text-white/70">
                     {m.durationSeconds ? `${m.durationSeconds}s` : m.reps ? `${m.reps} reps` : "livre"}
                   </span>
                 </div>
@@ -388,9 +405,9 @@ export default function SessionView({
                 <RestTimer handleRef={timerRef} floating={focusIndex !== null} />
                 {/* Progresso do dia — discreto */}
                 <div className="mb-4 flex items-center gap-3 px-1">
-                  <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/8">
+                  <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-glow to-viol transition-[width] duration-500"
+                      className="h-full rounded-full bg-aqua transition-[width] duration-500"
                       style={{ width: `${progressPct}%` }}
                     />
                   </div>
@@ -414,7 +431,7 @@ export default function SessionView({
                   <button
                     onClick={() => void playWorkout()}
                     disabled={startingTimer}
-                    className="mb-4 flex w-full items-center justify-center gap-2.5 rounded-3xl bg-gradient-to-r from-glow to-viol px-4 py-4 font-display text-base font-bold text-ink shadow-[0_8px_28px_rgba(34,211,238,0.35)] transition active:scale-[0.98]"
+                    className="mb-4 flex w-full items-center justify-center gap-2.5 rounded-3xl bg-aqua px-4 py-4 font-display text-base font-bold text-ink shadow-[0_8px_28px_rgba(68,226,217,0.35)] transition active:scale-[0.98]"
                   >
                     <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink/20">
                       <Icon name="play" size={15} />
@@ -448,17 +465,17 @@ export default function SessionView({
                           key={e.exerciseId}
                           onClick={() => (workoutSession ? setFocusIndex(idx) : null)}
                           className={`glass block w-full p-4 text-left transition active:scale-[0.99] ${
-                            done ? "border-emerald-400/40 bg-emerald-400/[0.07]" : ""
+                            done ? "border-aqua/40 bg-aqua/[0.07]" : ""
                           } ${!workoutSession ? "opacity-70" : ""}`}
                         >
                           <div className="flex items-start gap-3">
                             <div className="min-w-0 flex-1">
                               <p className="flex items-center gap-1.5 truncate font-semibold">
-                                {done && <Icon name="check" size={14} className="shrink-0 text-ok" />}
+                                {done && <Icon name="check" size={14} className="shrink-0 text-aqua" />}
                                 <span className="truncate">{e.name}</span>
                               </p>
                               {isPR && (
-                                <span className="mt-1 inline-flex items-center gap-1 rounded-lg bg-amber-300/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                                <span className="mt-1 inline-flex items-center gap-1 rounded-lg bg-fire/10 px-2 py-0.5 text-[10px] font-bold text-fire">
                                   <Icon name="medal" size={12} /> PR batido
                                 </span>
                               )}
@@ -469,7 +486,7 @@ export default function SessionView({
                               <p className="num mt-1 text-xs text-white/65">
                                 {e.sets}×{e.reps} · RIR {e.targetRIR} · desc. {e.suggestedRestSeconds}s
                                 {done && best !== null && (
-                                  <span className="ml-2 font-semibold text-ok">{fmtKg(best)}</span>
+                                  <span className="ml-2 font-semibold text-aqua">{fmtKg(best)}</span>
                                 )}
                               </p>
                             </div>
@@ -508,7 +525,7 @@ export default function SessionView({
                   {concluding ? "Concluindo…" : `Concluir treino (${summary.logged}/${summary.total})`}
                 </button>
                 {concludeHint && (
-                  <p className="mt-2 text-center text-xs text-amber-300">
+                  <p className="mt-2 text-center text-xs text-fire">
                     Registre pelo menos 40% dos exercícios para concluir o check-in ({Math.ceil(summary.total * 0.4)}{" "}
                     de {summary.total}).
                   </p>
@@ -580,7 +597,7 @@ export default function SessionView({
       />
 
       <Modal open={showSummary} onClose={() => setShowSummary(false)} title={`${session.sessionName} concluído`}>
-        <div className="mb-4 flex items-center justify-center gap-2 text-ok">
+        <div className="mb-4 flex items-center justify-center gap-2 text-aqua">
           <Icon name="check" size={22} />
           <span className="font-display text-lg font-bold">Bom treino!</span>
         </div>
@@ -590,11 +607,11 @@ export default function SessionView({
             <p className="text-[10px] text-white/55">exercícios</p>
           </div>
           <div className="glass p-3">
-            <p className="num font-display text-2xl font-bold text-ok">{summary.improved}</p>
+            <p className="num font-display text-2xl font-bold text-aqua">{summary.improved}</p>
             <p className="text-[10px] text-white/55">subiram carga</p>
           </div>
           <div className="glass p-3">
-            <p className="num font-display text-2xl font-bold text-amber-300">{summary.prs}</p>
+            <p className="num font-display text-2xl font-bold text-fire">{summary.prs}</p>
             <p className="text-[10px] text-white/55">PRs batidos</p>
           </div>
         </div>
@@ -868,7 +885,7 @@ function FocusMode({
             </p>
           </div>
           {elapsedLabel && (
-            <span className="num flex shrink-0 items-center gap-1.5 rounded-2xl border border-glow/30 bg-glow/10 px-3 py-1.5 font-display text-sm font-bold tracking-wide text-glow shadow-[0_0_18px_rgba(34,211,238,0.25)]">
+            <span className="num flex shrink-0 items-center gap-1.5 rounded-2xl border border-glow/30 bg-glow/10 px-3 py-1.5 font-display text-sm font-bold tracking-wide text-glow shadow-[0_0_18px_rgba(68,226,217,0.25)]">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-glow opacity-60" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-glow" />
@@ -876,7 +893,7 @@ function FocusMode({
               {elapsedLabel}
             </span>
           )}
-          <span className="num shrink-0 rounded-2xl bg-white/8 px-3 py-1.5 text-sm font-bold text-glow">
+          <span className="num shrink-0 rounded-2xl bg-white/10 px-3 py-1.5 text-sm font-bold text-glow">
             {visible === finishIndex ? "fim" : visible + 1}
             <span className="text-white/40">/{exercises.length}</span>
           </span>
@@ -885,9 +902,9 @@ function FocusMode({
         {/* Progresso do dia + trilho de exercícios */}
         <div className="px-5 pb-2">
           <div className="flex items-center gap-3">
-            <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/8">
+            <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-glow to-viol transition-[width] duration-500"
+                className="h-full rounded-full bg-aqua transition-[width] duration-500"
                 style={{ width: `${pct}%` }}
               />
             </div>
@@ -905,7 +922,7 @@ function FocusMode({
                   i === visible
                     ? "w-6 bg-glow"
                     : isExDone(e.exerciseId)
-                      ? "w-3 bg-emerald-400/80"
+                      ? "w-3 bg-aqua/80"
                       : "w-3 bg-white/15"
                 }`}
               />
@@ -914,7 +931,7 @@ function FocusMode({
               onClick={() => scrollToIndex(finishIndex)}
               aria-label="Ir para finalizar treino"
               className={`h-1.5 rounded-full transition-all duration-300 ${
-                visible === finishIndex ? "w-6 bg-viol" : focusCanConclude ? "w-3 bg-emerald-400/80" : "w-3 bg-white/15"
+                visible === finishIndex ? "w-6 bg-viol" : focusCanConclude ? "w-3 bg-aqua/80" : "w-3 bg-white/15"
               }`}
             />
           </div>
@@ -963,7 +980,7 @@ function FocusMode({
           ))}
           <div className="flex h-full snap-start flex-col px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-2">
             <div className="glass glass-strong flex min-h-0 flex-1 flex-col justify-center overflow-hidden !rounded-3xl border-b border-white/20 p-6 text-center ring-1 ring-white/10">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-400/15 text-emerald-300 ring-1 ring-emerald-300/30">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-aqua/15 text-aqua ring-1 ring-aqua/30">
                 <Icon name="check" size={28} />
               </div>
               <p className="font-display mt-5 text-2xl font-bold">Finalizar treino</p>
@@ -972,7 +989,7 @@ function FocusMode({
               </p>
               <div className="mx-auto mt-5 h-2 w-full max-w-56 overflow-hidden rounded-full bg-white/10">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-glow to-viol transition-[width] duration-500"
+                  className="h-full rounded-full bg-aqua transition-[width] duration-500"
                   style={{ width: `${pct}%` }}
                 />
               </div>
@@ -984,7 +1001,7 @@ function FocusMode({
                 {concluding ? "Concluindo..." : "Concluir treino"}
               </button>
               {(finishHint || !focusCanConclude) && (
-                <p className="mt-3 text-xs leading-relaxed text-amber-300">
+                <p className="mt-3 text-xs leading-relaxed text-fire">
                   Registre pelo menos {requiredToConclude} de {exercises.length} exercicios para concluir o check-in.
                 </p>
               )}
@@ -1104,7 +1121,7 @@ function ExerciseLogger({
     <div
       className={`glass glass-strong flex min-h-0 flex-1 flex-col overflow-hidden !rounded-3xl border-b border-white/20 ring-1 ring-white/10 transition-all duration-500 ${
         saved
-          ? "border-emerald-400/60 bg-emerald-500/10 shadow-[0_0_36px_rgba(52,211,153,0.18)]"
+          ? "border-aqua/60 bg-aqua/10 shadow-[0_0_36px_rgba(68,226,217,0.18)]"
           : ""
       }`}
     >
@@ -1122,12 +1139,12 @@ function ExerciseLogger({
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1.5">
             {saved && (
-              <span className="flex items-center gap-1 rounded-lg bg-emerald-400/20 px-2 py-1 text-[10px] font-bold text-emerald-300">
+              <span className="flex items-center gap-1 rounded-lg bg-aqua/20 px-2 py-1 text-[10px] font-bold text-aqua">
                 <Icon name="check" size={12} /> Feito
               </span>
             )}
             {willBePR && (
-              <span className="flex items-center gap-1 rounded-lg bg-amber-300/15 px-2 py-1 text-[10px] font-bold text-amber-300">
+              <span className="flex items-center gap-1 rounded-lg bg-fire/10 px-2 py-1 text-[10px] font-bold text-fire">
                 <Icon name="medal" size={12} /> PR batido
               </span>
             )}
@@ -1145,10 +1162,10 @@ function ExerciseLogger({
               {w.inherited && <p className="text-[9px] text-white/40">mantida</p>}
             </div>
           ))}
-          <div className={`week-pill current ${saved ? "!border-emerald-400/70" : ""}`}>
-            <p className={`text-[10px] font-bold ${saved ? "text-emerald-300" : "text-glow"}`}>S{currentWeek}</p>
+          <div className={`week-pill current ${saved ? "!border-aqua/70" : ""}`}>
+            <p className={`text-[10px] font-bold ${saved ? "text-aqua" : "text-glow"}`}>S{currentWeek}</p>
             <p className="num flex items-center justify-center gap-1 text-sm font-semibold">
-              hoje{saved && <Icon name="check" size={12} className="text-ok" />}
+              hoje{saved && <Icon name="check" size={12} className="text-aqua" />}
             </p>
           </div>
         </div>
@@ -1201,7 +1218,7 @@ function ExerciseLogger({
           ) : (
             <button
               onClick={() => setNotesOpen(true)}
-              className="mt-1 w-full rounded-2xl border border-dashed border-white/12 py-2 text-xs text-white/40 transition active:scale-[0.99]"
+              className="mt-1 w-full rounded-2xl border border-dashed border-white/10 py-2 text-xs text-white/40 transition active:scale-[0.99]"
             >
               + anotação
             </button>
@@ -1217,7 +1234,7 @@ function ExerciseLogger({
         <button
           onClick={save}
           disabled={saving}
-          className={`btn flex-[1.4] ${saved ? "!bg-emerald-500/85 !text-emerald-950" : "btn-primary"}`}
+          className={`btn flex-[1.4] ${saved ? "!bg-aqua !text-[#06120F]" : "btn-primary"}`}
         >
           {saving ? "Salvando…" : saved ? "Salvo — atualizar" : "Salvar"}
         </button>

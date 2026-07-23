@@ -28,7 +28,7 @@ const CHART_TOOLTIP = {
   },
 } as const;
 
-const GROUP_COLORS = ["#22D3EE", "#8B7CF8", "#34D399", "#FBBF24", "#F472B6", "#60A5FA"];
+const GROUP_COLORS = ["#44E2D9", "#44E2D9", "#44E2D9", "#FBBF24", "#F472B6", "#60A5FA"];
 
 export default function DemoPage() {
   // Gera uma vez por carregamento (dados fictícios, nada é salvo)
@@ -113,6 +113,53 @@ export default function DemoPage() {
       { name: "Tríceps corda", load: 31 },
       { name: "Paralelas", load: 18 },
     ],
+    // Agregados determinísticos para a vitrine (não tocam no banco real).
+    day: {
+      volumeKg: 12480,
+      series: 22,
+      splitMuscular: [
+        { grupo: "Peito", pct: 50 },
+        { grupo: "Ombro", pct: 30 },
+        { grupo: "Tríceps", pct: 20 },
+      ],
+      exerciseNames: [
+        { name: "Supino reto", sets: 4, reps: "8" },
+        { name: "Supino inclinado", sets: 3, reps: "10" },
+        { name: "Crossover", sets: 3, reps: "12" },
+        { name: "Tríceps corda", sets: 4, reps: "12" },
+        { name: "Paralelas", sets: 3, reps: "10" },
+      ],
+    },
+    week: {
+      semanaNum: 42,
+      diasCheck: ["treino", "descanso", "treino", "treino", "descanso", "hoje", "descanso"],
+      volumePorDia: [9800, 0, 11200, 10400, 0, 12480, 0],
+      volumeKg: 43880,
+      horas: 4.9,
+      kcal: 3240,
+      prs: 3,
+      streakSemanas: 8,
+      letrasTreino: ["A", "B", "C", "D"],
+    },
+    month: {
+      mes: "Outubro",
+      diasNoMes: 31,
+      volumeKg: 52400,
+      treinos: 16,
+      prs: 5,
+      consistenciaPct: 80,
+      evolucaoCargaPct: 14,
+      evolucaoPorLift: [
+        { nome: "Agachamento", pct: 18 },
+        { nome: "Supino reto", pct: 12 },
+        { nome: "Levantamento terra", pct: 9 },
+        { nome: "Desenvolvimento", pct: 7 },
+        { nome: "Remada curvada", pct: 5 },
+      ],
+      volumePorSemana: [11800, 13200, 12600, 14800, 0],
+      calendario: Array.from({ length: 31 }, (_, i) => [0, 2, 4, 7, 9, 11, 14, 16, 18, 21, 23, 25, 28, 29, 30, 1].includes(i)),
+      streakSemanas: 8,
+    },
   };
 
   return (
@@ -140,7 +187,7 @@ export default function DemoPage() {
           <p className="text-[10px] text-white/55">treinos</p>
         </div>
         <div className="glass p-3 text-center">
-          <p className="num font-display text-xl font-bold text-ok">{fmtPct(evo.overallPct)}</p>
+          <p className="num font-display text-xl font-bold text-aqua">{fmtPct(evo.overallPct)}</p>
           <p className="text-[10px] text-white/55">carga geral</p>
         </div>
         <div className="glass p-3 text-center">
@@ -158,7 +205,7 @@ export default function DemoPage() {
               <XAxis dataKey="data" tick={{ fill: "#8a93a6", fontSize: 10 }} />
               <YAxis domain={["auto", "auto"]} tick={{ fill: "#8a93a6", fontSize: 10 }} width={34} />
               <Tooltip {...CHART_TOOLTIP} />
-              <Line type="monotone" dataKey="kg" stroke="#22D3EE" strokeWidth={2.5} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="kg" stroke="#44E2D9" strokeWidth={2.5} dot={{ r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -196,7 +243,7 @@ export default function DemoPage() {
               <XAxis dataKey="periodo" tick={{ fill: "#8a93a6", fontSize: 10 }} />
               <YAxis tick={{ fill: "#8a93a6", fontSize: 10 }} width={34} />
               <Tooltip {...CHART_TOOLTIP} />
-              <Line type="monotone" dataKey="carga" name="carga (kg)" stroke="#8B7CF8" strokeWidth={2.5} dot={{ r: 3 }} connectNulls />
+              <Line type="monotone" dataKey="carga" name="carga (kg)" stroke="#44E2D9" strokeWidth={2.5} dot={{ r: 3 }} connectNulls />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -247,7 +294,7 @@ export default function DemoPage() {
               <XAxis dataKey="grupo" tick={{ fill: "#8a93a6", fontSize: 10 }} />
               <YAxis tick={{ fill: "#8a93a6", fontSize: 10 }} width={34} />
               <Tooltip {...CHART_TOOLTIP} />
-              <Bar dataKey="pct" name="evolução %" fill="#34D399" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="pct" name="evolução %" fill="#44E2D9" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -255,7 +302,7 @@ export default function DemoPage() {
           {evo.groups.map((g) => (
             <div key={g.muscleGroup} className="flex items-center justify-between text-sm">
               <span className="text-white/75">{g.muscleGroup}</span>
-              <span className={`num font-bold ${(g.evolutionPct ?? 0) > 0 ? "text-ok" : "text-white/50"}`}>
+              <span className={`num font-bold ${(g.evolutionPct ?? 0) > 0 ? "text-aqua" : "text-white/50"}`}>
                 {fmtPct(g.evolutionPct)}
               </span>
             </div>

@@ -62,7 +62,7 @@ export default function RestTimer({
       ) : (
         <div>
           <div className="flex items-center justify-between">
-            <span className={`num font-display text-2xl font-bold ${remaining === 0 ? "text-ok" : "text-glow"}`}>
+            <span className={`num font-display text-2xl font-bold ${remaining === 0 ? "text-aqua" : "text-glow"}`}>
               {remaining === 0 ? "Descanso feito" : fmt(remaining)}
             </span>
             <div className="flex gap-2">
@@ -76,7 +76,7 @@ export default function RestTimer({
           </div>
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-glow to-viol transition-[width] duration-300"
+              className="h-full rounded-full bg-aqua transition-[width] duration-300"
               style={{ width: `${pct}%` }}
             />
           </div>

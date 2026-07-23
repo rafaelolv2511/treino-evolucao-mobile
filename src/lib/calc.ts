@@ -490,6 +490,51 @@ export function stagnantExercises(
  * Evolução geral de um perfil (média das evoluções por exercício válidas),
  * usando o histórico completo — para o ranking por progresso.
  */
+/**
+ * Evolução % de um período, comparando com a carga ANTERIOR ao período.
+ *
+ * Motivo: `overallEvolutionPct` agrupa por semana do plano e exige 2 pontos
+ * semanais. Numa semana de calendário cabe apenas UMA semana do plano, então o
+ * ranking semanal nunca produzia valor (verificado no banco: 1 ponto por
+ * exercício por perfil). Aqui a régua é a data, não a semana do plano:
+ * - baseline = última carga válida ANTES do período (se existir);
+ *   sem histórico anterior, usa a primeira carga válida dentro do período.
+ * - atual = última carga válida DENTRO do período.
+ * - pct por exercício = ((atual - baseline) / baseline) × 100; média simples.
+ * A fórmula e a regra "sempre por exerciseId" são as mesmas de sempre.
+ */
+export function evolutionPctInPeriod(h: HistoryBundle, inPeriod: (date: string) => boolean): number | null {
+  const sessionById = new Map(h.sessions.map((s) => [s.id, s]));
+  const byExercise = new Map<string, { date: string; load: number; inPeriod: boolean }[]>();
+
+  for (const log of h.logs) {
+    const session = sessionById.get(log.workout_session_id);
+    if (!session) continue;
+    const { load } = bestLoadOfLog(log.id, h.sets);
+    if (load === null || load <= 0) continue;
+    const arr = byExercise.get(log.exercise_id) ?? [];
+    arr.push({ date: session.workout_date, load, inPeriod: inPeriod(session.workout_date) });
+    byExercise.set(log.exercise_id, arr);
+  }
+
+  const pcts: number[] = [];
+  for (const points of byExercise.values()) {
+    points.sort((a, b) => (a.date < b.date ? -1 : 1));
+    const inside = points.filter((p) => p.inPeriod);
+    if (inside.length === 0) continue;
+    const firstInsideDate = inside[0].date;
+    const before = points.filter((p) => !p.inPeriod && p.date < firstInsideDate);
+    const baseline = before.length ? before[before.length - 1].load : inside[0].load;
+    const current = inside[inside.length - 1].load;
+    // Sem histórico anterior E sem repetição no período não há o que comparar.
+    if (before.length === 0 && inside.length < 2) continue;
+    if (baseline > 0) pcts.push(((current - baseline) / baseline) * 100);
+  }
+
+  if (pcts.length === 0) return null;
+  return pcts.reduce((a, b) => a + b, 0) / pcts.length;
+}
+
 export function overallEvolutionPct(exerciseIds: string[], h: HistoryBundle): number | null {
   const pcts: number[] = [];
   for (const id of exerciseIds) {
@@ -501,4 +546,254 @@ export function overallEvolutionPct(exerciseIds: string[], h: HistoryBundle): nu
   }
   if (pcts.length === 0) return null;
   return pcts.reduce((a, b) => a + b, 0) / pcts.length;
+}
+
+// ── Agregações para os compartilháveis (identidade Carbon) ─────────────────
+// Regra da marca: nunca destacar o kg de um exercício isolado — só agregados.
+
+export interface DayAggregate {
+  volumeKg: number;
+  series: number;
+  splitMuscular: { grupo: string; pct: number }[];
+  exerciseNames: { name: string; sets: number; reps: string }[];
+}
+
+/** Volume, séries e divisão por grupo muscular de UMA sessão. */
+export function dayAggregate(h: HistoryBundle, workoutSessionId: string): DayAggregate {
+  const logs = h.logs.filter((l) => l.workout_session_id === workoutSessionId);
+  let volumeKg = 0;
+  let series = 0;
+  const byGroup = new Map<string, number>();
+  const exerciseNames: { name: string; sets: number; reps: string }[] = [];
+
+  for (const log of logs) {
+    const sets = h.sets.filter((s) => s.exercise_log_id === log.id && !s.carried_forward && s.load_kg !== null);
+    if (sets.length === 0) continue;
+    let exVolume = 0;
+    for (const set of sets) {
+      const reps = set.reps_done ?? 0;
+      exVolume += (set.load_kg ?? 0) * (reps > 0 ? reps : 1);
+      series += 1;
+    }
+    volumeKg += exVolume;
+    const group = log.primary_muscle_group_snapshot || "Geral";
+    byGroup.set(group, (byGroup.get(group) ?? 0) + exVolume);
+    const repsList = sets.map((s) => s.reps_done).filter((r): r is number => r != null);
+    exerciseNames.push({
+      name: log.exercise_name_snapshot,
+      sets: sets.length,
+      reps: repsList.length ? String(Math.round(repsList.reduce((a, b) => a + b, 0) / repsList.length)) : "—",
+    });
+  }
+
+  const total = [...byGroup.values()].reduce((a, b) => a + b, 0);
+  const splitMuscular = total
+    ? [...byGroup.entries()]
+        .map(([grupo, value]) => ({ grupo, pct: Math.round((value / total) * 100) }))
+        .sort((a, b) => b.pct - a.pct)
+        .slice(0, 4)
+    : [];
+
+  return { volumeKg: Math.round(volumeKg), series, splitMuscular, exerciseNames };
+}
+
+export interface WeekAggregate {
+  semanaNum: number;
+  diasCheck: ("descanso" | "treino" | "hoje")[];
+  volumePorDia: number[];
+  volumeKg: number;
+  horas: number;
+  kcal: number;
+  prs: number;
+  streakSemanas: number;
+  letrasTreino: string[];
+}
+
+/** Número ISO da semana (para rotular "SEM 42"). */
+export function isoWeekNumber(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+}
+
+function mondayOf(iso: string): Date {
+  const d = new Date(`${iso}T12:00:00`);
+  const day = (d.getDay() + 6) % 7; // 0 = segunda
+  d.setDate(d.getDate() - day);
+  return d;
+}
+
+function toISO(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Semana de calendário (segunda→domingo) que contém `todayISO`. */
+export function weekAggregate(h: HistoryBundle, todayISO: string, prsHoje = 0): WeekAggregate {
+  const monday = mondayOf(todayISO);
+  const days: string[] = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return toISO(d);
+  });
+
+  const completed = h.sessions.filter((s) => s.completed_at);
+  const doneDates = new Set(completed.map((s) => s.workout_date));
+
+  const diasCheck = days.map((iso) =>
+    iso === todayISO && doneDates.has(iso) ? "hoje" : doneDates.has(iso) ? "treino" : "descanso"
+  ) as ("descanso" | "treino" | "hoje")[];
+
+  const volumePorDia = days.map((iso) => {
+    const ids = completed.filter((s) => s.workout_date === iso).map((s) => s.id);
+    return ids.reduce((sum, id) => sum + dayAggregate(h, id).volumeKg, 0);
+  });
+
+  const inWeek = completed.filter((s) => days.includes(s.workout_date));
+  const volumeKg = volumePorDia.reduce((a, b) => a + b, 0);
+  const horas = inWeek.reduce((sum, s) => sum + (s.duration_seconds ?? 0), 0) / 3600;
+  const kcal = inWeek.reduce((sum, s) => sum + (s.calories_estimate ?? 0), 0);
+  const letrasTreino = [...new Set(inWeek.map((s) => s.session_key))].sort();
+
+  // Streak: semanas consecutivas (para trás) com ao menos um treino concluído.
+  let streakSemanas = 0;
+  for (let back = 0; back < 104; back++) {
+    const ref = new Date(monday);
+    ref.setDate(monday.getDate() - back * 7);
+    const start = toISO(ref);
+    const end = new Date(ref);
+    end.setDate(ref.getDate() + 6);
+    const endISO = toISO(end);
+    const has = completed.some((s) => s.workout_date >= start && s.workout_date <= endISO);
+    if (has) streakSemanas += 1;
+    else if (back > 0) break;
+  }
+
+  return {
+    semanaNum: isoWeekNumber(new Date(`${todayISO}T12:00:00`)),
+    diasCheck,
+    volumePorDia,
+    volumeKg,
+    horas,
+    kcal: Math.round(kcal),
+    prs: prsHoje,
+    streakSemanas,
+    letrasTreino,
+  };
+}
+
+export interface MonthAggregate {
+  mes: string;
+  diasNoMes: number;
+  volumeKg: number;
+  treinos: number;
+  prs: number;
+  consistenciaPct: number;
+  evolucaoCargaPct: number | null;
+  evolucaoPorLift: { nome: string; pct: number }[];
+  volumePorSemana: number[];
+  calendario: boolean[];
+  streakSemanas: number;
+}
+
+const MESES = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+
+/** Mês de calendário que contém `todayISO`. */
+export function monthAggregate(h: HistoryBundle, todayISO: string, streakSemanas = 0): MonthAggregate {
+  const ref = new Date(`${todayISO}T12:00:00`);
+  const year = ref.getFullYear();
+  const month = ref.getMonth();
+  const diasNoMes = new Date(year, month + 1, 0).getDate();
+  const prefix = `${year}-${String(month + 1).padStart(2, "0")}`;
+
+  const completed = h.sessions.filter((s) => s.completed_at && s.workout_date.startsWith(prefix));
+  const doneDates = new Set(completed.map((s) => s.workout_date));
+
+  const calendario = Array.from({ length: diasNoMes }, (_, i) =>
+    doneDates.has(`${prefix}-${String(i + 1).padStart(2, "0")}`)
+  );
+
+  const volumeKg = completed.reduce((sum, s) => sum + dayAggregate(h, s.id).volumeKg, 0);
+
+  // Volume por semana do mês (blocos de 7 dias a partir do dia 1).
+  const volumePorSemana: number[] = [];
+  for (let start = 1; start <= diasNoMes; start += 7) {
+    let acc = 0;
+    for (let d = start; d < start + 7 && d <= diasNoMes; d++) {
+      const iso = `${prefix}-${String(d).padStart(2, "0")}`;
+      acc += completed.filter((s) => s.workout_date === iso).reduce((sum, s) => sum + dayAggregate(h, s.id).volumeKg, 0);
+    }
+    volumePorSemana.push(acc);
+  }
+
+  // Evolução de carga no mês: baseline = carga anterior ao mês (regra da marca:
+  // média + por lift em %, nunca kg absoluto de um exercício isolado).
+  const inMonth = (date: string) => date.startsWith(prefix);
+  const evolucaoCargaPct = evolutionPctInPeriod(h, inMonth);
+
+  const sessionById = new Map(h.sessions.map((s) => [s.id, s]));
+  const byExercise = new Map<string, { name: string; points: { date: string; load: number; inside: boolean }[] }>();
+  for (const log of h.logs) {
+    const session = sessionById.get(log.workout_session_id);
+    if (!session) continue;
+    const { load } = bestLoadOfLog(log.id, h.sets);
+    if (load === null || load <= 0) continue;
+    const entry = byExercise.get(log.exercise_id) ?? { name: log.exercise_name_snapshot, points: [] };
+    entry.points.push({ date: session.workout_date, load, inside: inMonth(session.workout_date) });
+    byExercise.set(log.exercise_id, entry);
+  }
+  const evolucaoPorLift: { nome: string; pct: number }[] = [];
+  for (const { name, points } of byExercise.values()) {
+    points.sort((a, b) => (a.date < b.date ? -1 : 1));
+    const inside = points.filter((p) => p.inside);
+    if (inside.length === 0) continue;
+    const before = points.filter((p) => !p.inside && p.date < inside[0].date);
+    const baseline = before.length ? before[before.length - 1].load : inside[0].load;
+    if (before.length === 0 && inside.length < 2) continue;
+    if (baseline > 0) {
+      const pct = ((inside[inside.length - 1].load - baseline) / baseline) * 100;
+      if (pct !== 0) evolucaoPorLift.push({ nome: name, pct });
+    }
+  }
+  evolucaoPorLift.sort((a, b) => b.pct - a.pct);
+
+  // Consistência: dias treinados sobre dias úteis já decorridos do mês.
+  const isCurrentMonth = todayISO.startsWith(prefix);
+  const lastDay = isCurrentMonth ? Number(todayISO.slice(8, 10)) : diasNoMes;
+  let uteis = 0;
+  for (let d = 1; d <= lastDay; d++) {
+    const wd = new Date(year, month, d).getDay();
+    if (wd !== 0 && wd !== 6) uteis += 1;
+  }
+  const treinosEmUteis = [...doneDates].filter((iso) => {
+    const d = new Date(`${iso}T12:00:00`).getDay();
+    return d !== 0 && d !== 6;
+  }).length;
+
+  return {
+    mes: MESES[month],
+    diasNoMes,
+    volumeKg,
+    treinos: doneDates.size,
+    prs: 0,
+    consistenciaPct: uteis ? Math.round((treinosEmUteis / uteis) * 100) : 0,
+    evolucaoCargaPct,
+    evolucaoPorLift: evolucaoPorLift.slice(0, 5),
+    volumePorSemana,
+    calendario,
+    streakSemanas,
+  };
+}
+
+/** 12.5k / 842 — formato Carbon para números grandes. */
+export function fmtCompact(n: number): string {
+  if (n >= 1000) {
+    const k = n / 1000;
+    return `${k >= 100 ? Math.round(k) : k.toFixed(1).replace(".0", "")}k`;
+  }
+  return String(Math.round(n));
 }

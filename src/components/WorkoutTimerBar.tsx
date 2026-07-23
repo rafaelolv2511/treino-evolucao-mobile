@@ -38,7 +38,7 @@ export default function WorkoutTimerBar({
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+0.9rem)] z-40 flex justify-center px-4">
-      <div className="pointer-events-auto rounded-full bg-gradient-to-r from-glow/60 via-white/15 to-viol/60 p-[1.5px] shadow-[0_10px_34px_rgba(0,0,0,0.6),0_0_22px_rgba(34,211,238,0.22)]">
+      <div className="pointer-events-auto rounded-full bg-gradient-to-r from-aqua/70 via-aqua/40 to-aqua/70 p-[1.5px] shadow-[0_10px_34px_rgba(0,0,0,0.6),0_0_22px_rgba(68,226,217,0.22)]">
         <div className="flex items-center gap-1 rounded-full bg-[#0B0F16]/95 py-1 pl-1.5 pr-1 backdrop-blur-xl">
         <button onClick={onOpen} className="flex items-center gap-2 rounded-full px-2.5 py-1.5 transition active:scale-95">
           <span className="relative flex h-2 w-2">

@@ -146,13 +146,13 @@ export default function PlanEditor({
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     <button
                       onClick={() => setRenaming({ sessionKey: s.sessionKey, exerciseId: e.exerciseId, name: e.name })}
-                      className="flex items-center gap-1 rounded-lg bg-white/8 px-2 py-1 text-[11px] text-white/85"
+                      className="flex items-center gap-1 rounded-lg bg-white/10 px-2 py-1 text-[11px] text-white/85"
                     >
                       <Icon name="pencil" size={12} /> Renomear
                     </button>
                     <button
                       onClick={() => setEditing({ sessionKey: s.sessionKey, exercise: { ...e }, isNew: false })}
-                      className="rounded-lg bg-white/8 px-2 py-1 text-[11px] text-white/85"
+                      className="rounded-lg bg-white/10 px-2 py-1 text-[11px] text-white/85"
                     >
                       Editar tudo
                     </button>

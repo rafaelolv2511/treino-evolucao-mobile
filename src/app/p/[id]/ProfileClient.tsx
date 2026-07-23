@@ -95,7 +95,7 @@ export default function ProfileClient({ profileId }: { profileId: string }) {
           <button
             onClick={() => setTab("treinos")}
             className={`flex-1 rounded-2xl py-3 text-sm font-bold transition ${
-              tab === "treinos" ? "bg-white/12 text-glow" : "text-white/55"
+              tab === "treinos" ? "bg-white/10 text-glow" : "text-white/55"
             }`}
           >
             🏋️ Treinos
@@ -103,7 +103,7 @@ export default function ProfileClient({ profileId }: { profileId: string }) {
           <button
             onClick={() => setTab("evolucao")}
             className={`flex-1 rounded-2xl py-3 text-sm font-bold transition ${
-              tab === "evolucao" ? "bg-white/12 text-glow" : "text-white/55"
+              tab === "evolucao" ? "bg-white/10 text-glow" : "text-white/55"
             }`}
           >
             📈 Evolução

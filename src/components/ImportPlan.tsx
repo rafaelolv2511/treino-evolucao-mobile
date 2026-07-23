@@ -122,7 +122,7 @@ export default function ImportPlan({
     >
       {done ? (
         <div>
-          <p className="text-sm text-emerald-300">{done}</p>
+          <p className="text-sm text-aqua">{done}</p>
           <button
             onClick={() => {
               setDone(null);
@@ -136,7 +136,7 @@ export default function ImportPlan({
       ) : (
         <div>
           {currentPlan && (
-            <p className="mb-3 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-200">
+            <p className="mb-3 rounded-2xl border border-fire/30 bg-fire/10 p-3 text-xs text-fire">
               Este perfil já tem o treino <strong>{currentPlan.plan_name}</strong>. Ao importar um novo, o relatório
               completo do ciclo atual é salvo e baixado automaticamente antes da troca.
             </p>

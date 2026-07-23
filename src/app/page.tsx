@@ -24,8 +24,8 @@ import Brand from "@/components/Brand";
 const PALETTE = [
   "from-cyan-400/25 to-violet-500/25",
   "from-violet-400/25 to-fuchsia-500/25",
-  "from-emerald-400/25 to-cyan-500/25",
-  "from-amber-400/25 to-rose-500/25",
+  "from-aqua/25 to-cyan-500/25",
+  "from-fire/25 to-rose-500/25",
   "from-sky-400/25 to-indigo-500/25",
   "from-rose-400/25 to-violet-500/25",
   "from-teal-400/25 to-sky-500/25",
@@ -346,7 +346,7 @@ export default function HomePage() {
           </button>
 
           <Link href="/ranking" className="glass mt-4 flex w-full items-center gap-3 p-4 transition active:scale-[0.98]">
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400/25 to-rose-500/25 text-amber-300">
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-fire/25 to-rose-500/25 text-fire">
               <Icon name="trophy" size={20} />
             </span>
             <span className="flex-1">

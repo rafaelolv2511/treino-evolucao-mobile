@@ -125,7 +125,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
         <button
           onClick={() => setTab("treinos")}
           className={`flex flex-1 items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold transition ${
-            tab === "treinos" ? "bg-white/12 text-glow" : "text-white/55"
+            tab === "treinos" ? "bg-white/10 text-glow" : "text-white/55"
           }`}
         >
           <Icon name="dumbbell" size={17} /> Treinos
@@ -133,7 +133,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
         <button
           onClick={() => setTab("evolucao")}
           className={`flex flex-1 items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold transition ${
-            tab === "evolucao" ? "bg-white/12 text-glow" : "text-white/55"
+            tab === "evolucao" ? "bg-white/10 text-glow" : "text-white/55"
           }`}
         >
           <Icon name="chart" size={17} /> Evolução

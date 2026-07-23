@@ -1,5 +1,54 @@
 # PROJECT_STATUS.md
 
+## Rodada 22/07/2026 — repaginação visual "Carbon" + correção do ranking de evolução
+
+### Bug corrigido: evolução % do ranking (investigado no banco)
+Sintoma: a coluna de evolução ficava vazia. Causa real, confirmada por consulta ao Supabase (não por leitura de código): `overallEvolutionPct` agrupa por semana DO PLANO (S1..Sn) e exige 2 pontos semanais; numa semana de calendário cabe apenas UMA semana de plano — os três perfis ativos tinham exatamente 1 ponto por exercício na semana atual. O filtro "Semana" nunca podia produzir valor.
+
+Correção: nova função pura `evolutionPctInPeriod(h, inPeriod)` — a régua passa a ser a DATA, não a semana do plano. Baseline = última carga válida ANTES do período (sem histórico anterior, usa a primeira do período e exige repetição). Fórmula e a regra "sempre por exerciseId" preservadas. O ranking passa a receber o histórico completo do perfil (o baseline precisa enxergar o passado). `overallEvolutionPct` segue intacto para a aba Evolução e relatórios.
+Teste: semana que retornava null agora retorna +10%; perfil sem histórico anterior continua null.
+
+### Identidade Carbon (só camada visual — nenhuma lógica, rota, tabela ou cálculo alterado)
+- **Tokens** (`globals.css`): Preto Rack #0A0A09, superfícies #101010/#0D0D0D, bordas #1F1F1F/#262626, Giz #FAFAFA, secundário #8A8A88, apagado #6E6E6E, Aqua #44E2D9 (faísca), PR Fire #FF5C1F (alerta raro). Todos os NOMES DE CLASSE foram mantidos (`glass`, `btn`, `field`, `week-pill`, `bg-orbs`…) — só os valores mudaram, por isso nada de comportamento quebrou. Classes novas: `.stat` (Anton) e `.label`.
+- **Tipografia**: Archivo 700/900 (marca), Anton (números), Space Grotesk 400/500/700 (interface). Fonte antiga Inter removida.
+- **Marca**: `Brand.tsx` passa a usar os PNGs oficiais (`/assets/logo-white|volt|dark.png`, 691×500, não redesenhados); wordmark `RT` + `rainning` em 0.72em, Archivo 900, cor única. Ícones do app (192/512/apple/favicon) regerados com a marca aqua centralizada em quadrado Preto Rack, raio 26px. Manifest e themeColor em #0A0A09.
+- **Limpeza de paleta** em 8 arquivos: verde esmeralda (estado "Feito"/"Salvo") → Aqua; âmbar (avisos) → PR Fire; gradientes ciano→violeta → faísca única Aqua; cores do Recharts atualizadas.
+
+### Compartilháveis reconstruídos (galeria Dia/Semana/Mês)
+`ShareCard.tsx` reescrito por completo: abas Dia / Semana / Mês + carrossel horizontal com scroll-snap, indicadores e preview por arte. Overlay exporta PNG com alfa real (só bloco + marca); card exporta o quadro 1080×1920 inteiro. Copiar (padrão Safari com ClipboardItem+Promise), Salvar (folha nativa → galeria) e Compartilhar preservados.
+
+15 artes: **Dia** (grid+volume, circuito, stats limpos, treino concluído, o dia em números) · **Semana** (semana completa com sparkline, chip, painel, sequência) · **Mês** (chip, evolução %, carga por movimento, volume por semana, consistência com calendário real, retrospectiva).
+Regras da identidade aplicadas: respiro de 56px, bloco ancorado embaixo, marca colada nas infos, barra de split muscular como assinatura (no lugar do percurso), aqua num único número-chave por arte, e nunca kg de exercício isolado — só agregados.
+
+### Agregações novas em `calc.ts`
+`dayAggregate` (volume, séries, split por grupo, lista de exercícios), `weekAggregate` (checks dos 7 dias segunda→domingo, volume por dia, horas, kcal, streak de semanas, letras da rotina, semana ISO), `monthAggregate` (calendário real de 28–31 dias, volume por semana, consistência sobre dias úteis decorridos, evolução de carga % média e por lift), `fmtCompact` (12.5k / 52.4k / 152k) e `isoWeekNumber`.
+
+### Validação desta rodada
+- `npm run build` limpo, 6 rotas, `tsc --noEmit` sem erros.
+- Agregações testadas (tsx): split soma 100%, calendário com 31 dias, 5 blocos semanais, streak, fmtCompact.
+- **15 artes × 3 cenários (dados completos / sem dados / sem evolução) = 45 execuções, zero falhas.**
+- Artes renderizadas em PNG real (node-canvas) e conferidas visualmente. Correção encontrada só no pixel: horas decimais viravam "4h9" (parecia 4h09, eram 4h54) — agora `fmtHoras` formata corretamente.
+- Pendente de teste no iPhone real: carrossel horizontal, copiar overlay e leitura das artes sobre foto.
+
+### Auditoria geral pós-repaginação (antes do push)
+Varredura completa das funcionalidades. Resultado: **um bug real encontrado e corrigido, anterior a esta rodada.**
+
+**Bug: classes com opacidade `/8` e `/12` não geravam CSS nenhum.** A escala de opacidade do Tailwind v3 anda de 5 em 5 (5,10,15,20…); `/8` e `/12` ficam fora e a classe é descartada silenciosamente — o elemento fica sem fundo/borda. Confirmado no CSS compilado (`fire/12` → 0 ocorrências; `fire/10`, `/25`, `/30`, `/40` presentes). 11 ocorrências corrigidas em 4 arquivos: `bg-white/8`→`/10` (SessionView ×4, PlanEditor ×2), `bg-white/12`→`/10` (page do perfil ×2), `border-white/12`→`/10` (SessionView, ranking ×2). É a mesma família do `bg-white/6` corrigido em 11/07.
+
+Método da auditoria (tudo verificado, não presumido):
+- `tsc --noEmit` limpo; build limpo, 6 rotas.
+- **Toda classe da paleta usada no código conferida contra o CSS compilado** — 31 classes, todas presentes após a correção.
+- Servidor de produção no ar: `/`, `/ranking`, `/demo`, `/p/[id]` → HTTP 200, sem erro no log. Assets `/assets/logo-*.png`, os 4 ícones e o manifest → HTTP 200. Marca renderizando com `logo-volt.png` e wordmark `RT`+`rainning` em 0.72em. Manifest em #0A0A09.
+- Empilhamento de camadas mapeado (main 10 · RestTimer 30 · barra 40 · Modal 50 · ShareCard 60 · FocusMode 9999 · RestTimer flutuante 10001) — sem conflito: o modo foco fecha antes do resumo/compartilhar abrir, e o timer só flutua dentro do foco.
+- Código morto: `lastValidLoad` ficou sem uso após o novo motor de sugestão (exportado, inofensivo, mantido). `evolutionForExercise`, `parseRepsRange` e `isoWeekNumber` são usados internamente — não são órfãos.
+
+**Suite de regressão criada (`regress.ts`, roda com `npx tsx regress.ts`)** — o projeto não tinha teste automatizado nenhum. 25 asserções cobrindo as regras que não podiam quebrar: carga herdada (não vira evolução nem recorde), PR (primeira carga nunca é recorde), semanas do plano S1/S2/S3, semana de calendário segunda→domingo com 1 check-in por dia, estagnação, sugestão por séries, calorias com cardio, evolução do ranking e evolução da aba Evolução. **25 passaram, 0 falharam.**
+
+### Fora do escopo desta rodada (registrado)
+"Card · evolução do peso corporal" do documento de identidade: exige a série diária de `body_metrics` no `ShareStats`, que hoje não é carregada nesse fluxo. Fica para a próxima rodada.
+
+---
+
 ## Rodada 14/07/2026 (2) — lapidação de UX: barra, play, tela cheia compacta e cardio
 
 1. **Barra do treino não cobre mais nada:** espaçador de 5rem no fim da página quando há treino rodando (o botão "Concluir treino" fica acima da pílula) e a barra some automaticamente enquanto qualquer modal está aberto (novo `useOverlayOpen` em ui.tsx — o Modal registra num contador global; a barra assina via useSyncExternalStore). Visual novo: anel gradiente ciano→violeta com brilho.
