@@ -18,6 +18,7 @@ import { bestLoadOfLog, evolutionForPlan, fmtKg, fmtPct, weeklySeriesForExercise
 import { Section, TabBar } from "@/components/ui";
 import Icon from "@/components/Icons";
 import ShareCard, { ShareStats } from "@/components/ShareCard";
+import { instagramWorkoutTitle } from "@/lib/share";
 
 const CHART_TOOLTIP = {
   contentStyle: {
@@ -95,6 +96,11 @@ export default function DemoPage() {
     appName: "RTrainning",
     profileName: "Rafael Demo",
     sessionName: "Peito e tríceps",
+    workoutTitle: instagramWorkoutTitle({
+      sessionName: "Treino A",
+      focus: "Peito e tríceps",
+      muscleGroups: ["Peito", "Tríceps"],
+    }),
     planName: DEMO_PLAN.planName,
     dateLabel: history.sessions[history.sessions.length - 1].workout_date.split("-").reverse().join("/"),
     exercisesDone: 6,

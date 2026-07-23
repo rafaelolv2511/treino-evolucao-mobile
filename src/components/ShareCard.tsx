@@ -9,6 +9,7 @@ export interface ShareStats {
   appName: string;
   profileName: string;
   sessionName: string;
+  workoutTitle: string;
   planName: string;
   dateLabel: string;
   exercisesDone: number;
@@ -274,7 +275,7 @@ const dayGrid: Art["draw"] = (ctx, s, logo) => {
   shadowOn(ctx);
   ctx.font = STAT(84);
   ctx.fillStyle = GIZ;
-  ctx.fillText(s.sessionName, PAD, top + 170);
+  ctx.fillText(s.workoutTitle, PAD, top + 170);
   shadowOff(ctx);
 
   const col = (W - PAD * 2) / 2;
@@ -303,7 +304,7 @@ const dayCircuit: Art["draw"] = (ctx, s, logo) => {
   shadowOn(ctx);
   ctx.font = STAT(96);
   ctx.fillStyle = GIZ;
-  ctx.fillText(s.sessionName.toUpperCase(), PAD, top + 180);
+  ctx.fillText(s.workoutTitle.toUpperCase(), PAD, top + 180);
   shadowOff(ctx);
   ctx.font = TEXT(28, 500);
   ctx.fillStyle = MUTED;
@@ -329,7 +330,7 @@ const dayClean: Art["draw"] = (ctx, s, logo) => {
   shadowOn(ctx);
   ctx.font = STAT(72);
   ctx.fillStyle = GIZ;
-  ctx.fillText(s.sessionName, PAD, top + 76);
+  ctx.fillText(s.workoutTitle, PAD, top + 76);
   shadowOff(ctx);
   statBlock(ctx, dur(s), "Duração", PAD, top + 230, 104);
   statBlock(ctx, kcal(s), "Calorias", PAD, top + 380, 104);
@@ -349,7 +350,7 @@ const dayCard: Art["draw"] = (ctx, s, logo) => {
   bracket(ctx, "Treino concluído", PAD + 40, 380);
   ctx.font = STAT(120);
   ctx.fillStyle = GIZ;
-  ctx.fillText(s.sessionName.toUpperCase(), PAD + 40, 500);
+  ctx.fillText(s.workoutTitle.toUpperCase(), PAD + 40, 500);
 
   const col = (W - PAD * 2 - 80) / 3;
   statBlock(ctx, dur(s), "Duração", PAD + 40, 700, 88);
@@ -388,23 +389,26 @@ const dayNumbers: Art["draw"] = (ctx, s, logo) => {
   ctx.fillText(s.dateLabel, W - PAD - 40, 198);
   ctx.textAlign = "left";
 
-  bracket(ctx, "O dia em números", PAD + 40, 380);
-  ctx.font = STAT(190);
-  ctx.fillStyle = AQUA;
-  ctx.fillText(vol(s), PAD + 40, 560);
+  bracket(ctx, s.workoutTitle, PAD + 40, 360);
   ctx.font = TEXT(28, 700);
   ctx.fillStyle = FADED;
-  ctx.fillText("KG DE VOLUME", PAD + 40, 610);
+  ctx.fillText("O DIA EM NÚMEROS", PAD + 40, 430);
+  ctx.font = STAT(190);
+  ctx.fillStyle = AQUA;
+  ctx.fillText(vol(s), PAD + 40, 610);
+  ctx.font = TEXT(28, 700);
+  ctx.fillStyle = FADED;
+  ctx.fillText("KG DE VOLUME", PAD + 40, 660);
 
   const col = (W - PAD * 2 - 80) / 3;
-  statBlock(ctx, kcal(s), "Kcal", PAD + 40, 780, 84);
-  statBlock(ctx, String(s.day?.series ?? 0), "Séries", PAD + 40 + col, 780, 84);
-  statBlock(ctx, String(s.prs), "Novos PRs", PAD + 40 + col * 2, 780, 84, s.prs > 0);
+  statBlock(ctx, kcal(s), "Kcal", PAD + 40, 830, 84);
+  statBlock(ctx, String(s.day?.series ?? 0), "Séries", PAD + 40 + col, 830, 84);
+  statBlock(ctx, String(s.prs), "Novos PRs", PAD + 40 + col * 2, 830, 84, s.prs > 0);
 
   if (s.day?.splitMuscular.length) {
-    label(ctx, "Divisão do volume", PAD + 40, 960);
-    splitBar(ctx, s.day.splitMuscular, PAD + 40, 990, W - PAD * 2 - 80, 22);
-    splitLegend(ctx, s.day.splitMuscular, PAD + 40, 1080);
+    label(ctx, "Divisão do volume", PAD + 40, 1010);
+    splitBar(ctx, s.day.splitMuscular, PAD + 40, 1040, W - PAD * 2 - 80, 22);
+    splitLegend(ctx, s.day.splitMuscular, PAD + 40, 1130);
   }
 
   ctx.font = TEXT(32, 700);
@@ -959,6 +963,11 @@ export default function ShareCard({ stats, onClose }: { stats: ShareStats; onClo
                 art.kind === "overlay" ? "share-checker border-iron" : "border-line bg-deep"
               }`}
             >
+              {art.kind === "overlay" && (
+                <span className="absolute right-3 top-3 z-10 flex items-center gap-1.5 rounded-lg border border-aqua/30 bg-ink/90 px-2.5 py-1.5 text-[10px] font-bold uppercase text-aqua">
+                  <Icon name="copy" size={12} /> Copiável
+                </span>
+              )}
               <canvas
                 ref={(el) => {
                   previewRefs.current[i] = el;
@@ -968,7 +977,10 @@ export default function ShareCard({ stats, onClose }: { stats: ShareStats; onClo
             </div>
             <p className="mt-2 truncate text-center text-xs text-muted">
               {art.label}
-              <span className="text-faded"> · {art.kind === "overlay" ? "PNG transparente" : "card"}</span>
+              <span className="text-faded">
+                {" "}
+                · {art.kind === "overlay" ? "prévia do PNG transparente" : "card"}
+              </span>
             </p>
           </div>
         ))}
@@ -1001,7 +1013,7 @@ export default function ShareCard({ stats, onClose }: { stats: ShareStats; onClo
         </div>
         <p className="mt-2 text-center text-[11px] text-faded">
           {current?.kind === "overlay"
-            ? "Fundo transparente — cole sobre sua foto na Story."
+            ? "Copie e cole sobre sua foto. O fundo da prévia não vai no PNG."
             : "Imagem completa 1080×1920 para a Story."}
         </p>
       </div>

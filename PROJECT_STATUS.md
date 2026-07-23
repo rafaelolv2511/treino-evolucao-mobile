@@ -209,6 +209,9 @@ Implementado e testado (build ok, 6 rotas):
 8. **Edição rápida do exercício:** além de nome/descrição, agora edita a quantidade de séries (stepper −/+).
 9. **Sugestão de carga com repetições:** considera RIR e reps vs faixa alvo (teto da faixa → subir; abaixo do piso → reduzir; testado).
 10. **Compartilhamento "instagramável":** ao concluir, o botão Compartilhar abre as abas Instagram e PNG transparente, com 3 conceitos modernos em cada formato, todos em 1080×1920. Stories podem ser compartilhados/salvos; overlays transparentes podem ser copiados/salvos.
+11. **Recompartilhar depois:** toda sessão com `completed_at` mostra "Compartilhar novamente" abaixo do estado "Treino concluído", inclusive após fechar a tela ou reabrir o treino em outra data.
+12. **Títulos sociais:** as cinco artes de Dia usam nomes Instagramáveis derivados do foco e dos grupos musculares (`Back day`, `Chest day`, `Leg day`, `Shoulder day`, `Arm day`, `Core day`, entre outros).
+13. **Prévia do overlay:** o PNG continua transparente e copiável, mas a galeria usa um fundo Carbon sólido, sem xadrez, com selo "Copiável" e aviso de que o fundo visual não é exportado.
 
 Banco: migrations `rtrainning_grupos_pin_conclusao` (completed_at, profile_groups, group_id, pin_hash) e `20260723032929_allow_profiles_in_multiple_groups` aplicadas. A tabela `profile_group_memberships` mantém a relação muitos-para-muitos; `profiles.group_id` permanece sincronizado com o primeiro grupo para compatibilidade com versões anteriores.
 

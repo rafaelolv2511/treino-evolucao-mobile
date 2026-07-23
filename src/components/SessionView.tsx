@@ -36,6 +36,7 @@ import {
   TrainingPlanRow,
   WorkoutSessionRow,
 } from "@/lib/types";
+import { instagramWorkoutTitle } from "@/lib/share";
 import RestTimer, { RestTimerHandle } from "./RestTimer";
 import { Modal, TabBar, useBackClose } from "./ui";
 import Icon from "./Icons";
@@ -165,6 +166,7 @@ export default function SessionView({
 
   const progressPct = summary.total > 0 ? Math.round((summary.logged / summary.total) * 100) : 0;
   const canConclude = summary.total > 0 && summary.logged / summary.total >= 0.4;
+  const isCompleted = Boolean(completedAt);
 
   // Treinos concluídos nesta semana (check-ins reais), para o card compartilhável.
   const weeklyDone = useMemo(() => {
@@ -213,7 +215,7 @@ export default function SessionView({
   }
 
   function requestConclude(loggedOverride = summary.logged): boolean {
-    if (!workoutSession) return false;
+    if (!workoutSession || isCompleted) return false;
     const enoughLogged = summary.total > 0 && loggedOverride / summary.total >= 0.4;
     if (!enoughLogged) {
       setConcludeHint(true);
@@ -299,6 +301,11 @@ export default function SessionView({
     appName: "RTrainning",
     profileName: profile.name,
     sessionName: session.sessionName,
+    workoutTitle: instagramWorkoutTitle({
+      sessionName: session.sessionName,
+      focus: session.focus,
+      muscleGroups: session.exercises.map((exercise) => exercise.primaryMuscleGroup),
+    }),
     planName: plan.plan_name,
     dateLabel: (workoutSession?.workout_date ?? date).split("-").reverse().join("/"),
     exercisesDone: summary.logged,
@@ -516,14 +523,26 @@ export default function SessionView({
               <>
                 <button
                   onClick={() => requestConclude()}
-                  disabled={concluding}
+                  disabled={concluding || isCompleted}
                   className={`btn mt-5 flex w-full items-center justify-center gap-2 ${
-                    canConclude ? "btn-primary" : "btn-ghost"
+                    isCompleted ? "btn-ghost border-aqua/30 text-aqua" : canConclude ? "btn-primary" : "btn-ghost"
                   }`}
                 >
                   <Icon name="check" size={17} />
-                  {concluding ? "Concluindo…" : `Concluir treino (${summary.logged}/${summary.total})`}
+                  {isCompleted
+                    ? "Treino concluído"
+                    : concluding
+                      ? "Concluindo…"
+                      : `Concluir treino (${summary.logged}/${summary.total})`}
                 </button>
+                {isCompleted && (
+                  <button
+                    onClick={() => setShowShare(true)}
+                    className="btn btn-primary mt-2 flex w-full items-center justify-center gap-2"
+                  >
+                    <Icon name="share" size={16} /> Compartilhar novamente
+                  </button>
+                )}
                 {concludeHint && (
                   <p className="mt-2 text-center text-xs text-fire">
                     Registre pelo menos 40% dos exercícios para concluir o check-in ({Math.ceil(summary.total * 0.4)}{" "}

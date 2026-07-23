@@ -4,6 +4,7 @@ import {
   calendarWeekSummary, evolutionForPlan, HistoryBundle,
 } from "./src/lib/calc";
 import { groupIdsForProfile, normalizeGroupIds, profileIsInGroup } from "./src/lib/groups";
+import { instagramWorkoutTitle } from "./src/lib/share";
 
 
 let ok = 0, fail = 0;
@@ -118,6 +119,13 @@ t("participa tambem do segundo grupo", profileIsInGroup(multi, "trabalho"));
 t("nao participa de grupo nao selecionado", !profileIsInGroup(multi, "familia"));
 t("remove IDs duplicados", normalizeGroupIds(["amigos", "amigos", "trabalho"]).length === 2);
 t("aceita group_id antigo durante a migracao", groupIdsForProfile({ group_id: "legado" })[0] === "legado");
+
+console.log("\n11) TITULO INSTAGRAMAVEL DO TREINO");
+t("costas vira Back day", instagramWorkoutTitle({ sessionName: "Treino B", focus: "Costas e bíceps" }) === "Back day");
+t("peito vira Chest day", instagramWorkoutTitle({ sessionName: "Treino A", focus: "Peito e tríceps" }) === "Chest day");
+t("quadriceps vira Leg day", instagramWorkoutTitle({ sessionName: "Treino C", muscleGroups: ["Quadríceps"] }) === "Leg day");
+t("ombro vira Shoulder day", instagramWorkoutTitle({ sessionName: "Treino D", focus: "Ombros" }) === "Shoulder day");
+t("treino desconhecido tem fallback", instagramWorkoutTitle({ sessionName: "Treino livre" }) === "Workout day");
 
 console.log(`\n=== ${ok} passaram, ${fail} falharam ===`);
 process.exit(fail ? 1 : 0);
